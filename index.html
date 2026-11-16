@@ -473,55 +473,98 @@
 
 <script>
 /* =====================================================================
-   CONFIGURACIÓN: links publicados del Google Sheet (formato CSV).
-   La página lee todos y junta los meses que encuentre. Cada link puede ser:
-   - una hoja tipo "Resumen": un solo mes, el de "Período analizado";
-   - una tabla con todos los meses: una fila por entidad y período, con
-     columnas Período, Entidad y Puntaje global (y, si están, C, A, M, E, L,
-     Nota CAMEL, Categoría, Patrimonio efectivo, Participación).
-   Para sumar otra pestaña, agregá una línea con su link (…pub?gid=NÚMERO&single=true&output=csv).
+   CONFIGURACIÓN
+   La página lee el Google Sheet publicado cada vez que se abre.
+   DOCUMENTO_URL  : link publicado del documento (formato CSV). De él salen
+                    los links de cada pestaña.
+   GID_RESUMEN    : número de la pestaña Resumen (el mes elegido en la hoja).
+   GID_PUNTAJES   : número de la pestaña Puntajes (todos los meses). Con este
+                    número el historial se lee en vivo. Vacío = se usa la copia
+                    guardada más abajo y se intenta encontrar la pestaña sola.
+   GID_BASE       : opcional, pestaña Base (patrimonio de cada mes).
+   El número de una pestaña es lo que aparece después de "#gid=" en la
+   dirección del navegador cuando esa pestaña está abierta en Google Sheets.
    ===================================================================== */
 const CONFIG = {
-  FUENTES: [
-    { nombre: "Pestaña Resumen",
-      url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTglShja49GBgQX7qzsKUqE6sgwxhMMVaTyrw7i7WCfmCxtbFBzDdTwo2mqyCSKFyTRenh2tbqXKn5Z/pub?gid=611378809&single=true&output=csv" },
-    { nombre: "Documento completo",
-      url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTglShja49GBgQX7qzsKUqE6sgwxhMMVaTyrw7i7WCfmCxtbFBzDdTwo2mqyCSKFyTRenh2tbqXKn5Z/pub?output=csv" }
-  ]
+  DOCUMENTO_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTglShja49GBgQX7qzsKUqE6sgwxhMMVaTyrw7i7WCfmCxtbFBzDdTwo2mqyCSKFyTRenh2tbqXKn5Z/pub?output=csv",
+  GID_RESUMEN: "611378809",
+  GID_PUNTAJES: "",
+  GID_BASE: "",
+  BUSCAR_PESTANAS: true,          // intenta encontrar Puntajes y Base entre las pestañas publicadas
+  CODIGO_PATRIMONIO: "1.04"       // ratio de la Base con el patrimonio efectivo
 };
 
-/* Copia del Resumen guardada en la página: se usa si el Google Sheet no responde. */
-const RESPALDO_CSV = String.raw`,Sistema de calificación CAMEL — Bancos,,,,,,,,,,,,,,,,,,,
-,,,,,,,,,,,,,Control de carga,,,,,,,
-,,Período a analizar,2026/09,← vacío = último mes cargado,,,,,,Período analizado,2026/09,,Períodos cargados,9,,,,,,
-,,Comparar contra,,← vacío = mes anterior,,,,,,Comparado contra,2026/08,,Filas del último mes (esperado 16),16,,,,,,
-,,,,,,,,,,,,,Ratios de la Base sin parámetro,0,,,,,,
-,Mejor calificado: Itaú (1.52)   ·   Mayor riesgo relativo: Basa (3.57)   ·   Sistema: 2.03,,,,,,,,,,,,,,,,,,,
-,,,,,,,,,,,,,,,,,,,,
-,#,Entidad,"C
-Capital","A
-Activos","M
-Gestión","E
-Rentab.","L
-Liquidez",Puntaje global,Nota CAMEL,Categoría,Variación vs. comparación,Tendencia,Patrimonio efectivo (mill. Gs.),Participación,,,Auxiliar de orden — no modificar,,,
-,—,Sistema,2.00,2.14,2.00,2.00,2.00,2.03,2,Satisfactorio,-0.07,▲ Mejora,"32,627,126",100.0%,,,Entidad,Puntaje,Orden,1
-,1,Itaú,1.40,2.21,1.00,1.00,2.00,1.52,2,Satisfactorio,-0.03,▲ Mejora,"5,871,451",18.0%,,,BNA,3.17,15,13
-,2,BNF,1.00,3.14,2.00,2.20,1.00,1.87,2,Satisfactorio,-0.06,▲ Mejora,"3,979,066",12.2%,,,Atlas,2.23,5,6
-,3,Continental,3.00,2.00,1.00,1.40,2.50,1.98,2,Satisfactorio,+0.21,▼ Deterioro,"5,977,620",18.3%,,,Bancop,2.62,8,8
-,4,GNB,1.60,2.43,2.00,2.00,2.00,2.01,2,Satisfactorio,+0.06,▼ Deterioro,"3,293,819",10.1%,,,Basa,3.57,16,11
-,5,Atlas,2.00,2.14,3.00,2.00,2.00,2.23,2,Satisfactorio,-0.09,▲ Mejora,"1,417,825",4.3%,,,BNF,1.87,2,3
-,6,Familiar,2.60,3.57,2.00,1.00,2.00,2.23,2,Satisfactorio,0.00,= Estable,"1,417,445",4.3%,,,Citibank,2.60,7,10
-,7,Citibank,1.40,1.21,5.00,3.40,2.00,2.60,3,Aceptable,+0.14,▼ Deterioro,"296,259",0.9%,,,Continental,1.98,3,7
-,8,Bancop,2.60,2.00,3.00,3.00,2.50,2.62,3,Aceptable,0.00,= Estable,"799,801",2.5%,,,Do Brasil,2.69,9,4
-,9,Do Brasil,1.00,1.86,5.00,4.60,1.00,2.69,3,Aceptable,0.00,= Estable,"155,796",0.5%,,,Familiar,2.23,6,9
-,10,Interfisa,2.20,2.00,4.00,2.80,2.50,2.70,3,Aceptable,-0.25,▲ Mejora,"617,554",1.9%,,,GNB,2.01,4,12
-,11,UENO,3.60,1.00,3.00,3.00,3.00,2.72,3,Aceptable,+0.08,▼ Deterioro,"2,557,859",7.8%,,,Interfisa,2.70,10,16
-,12,Zeta,1.80,2.71,3.00,3.60,2.50,2.72,3,Aceptable,+0.08,▼ Deterioro,"767,481",2.4%,,,Itaú,1.52,1,17
-,13,Sudameris,2.80,2.36,3.00,3.00,3.50,2.93,3,Aceptable,-0.13,▲ Mejora,"3,829,529",11.7%,,,Solar,2.97,14,15
-,14,Solar,3.80,3.93,1.00,3.60,2.50,2.97,3,Aceptable,-0.10,▲ Mejora,"357,015",1.1%,,,Sudameris,2.93,13,14
-,15,BNA,1.00,4.64,5.00,4.20,1.00,3.17,3,Aceptable,+0.07,▼ Deterioro,"87,556",0.3%,,,UENO,2.72,11,2
-,16,Basa,3.00,3.57,4.00,3.80,3.50,3.57,4,Débil,-0.14,▲ Mejora,"1,201,051",3.7%,,,Zeta,2.72,12,5
-,Menor puntaje = mejor.  Escala: 1 Sólido · 2 Satisfactorio · 3 Aceptable · 4 Débil · 5 Crítico.  Variación negativa = mejora. Pesos y cortes editables en la hoja Parámetros.,,,,,,,,,,,,,,,,,,,`;
+/* Escala de calificación de la hoja Parámetros: puntaje desde → nota y categoría. */
+const ESCALA = [[4.5, 5, "Crítico"], [3.5, 4, "Débil"], [2.5, 3, "Aceptable"], [1.5, 2, "Satisfactorio"], [1, 1, "Sólido"]];
+
+/* Copia guardada de las pestañas Puntajes y Base (patrimonio), sacada del Excel.
+   Se usa para los meses que el Google Sheet no entregue en vivo. */
+const COPIA_FECHA = "16/11/2026";
+const COPIA_PUNTAJES = String.raw`N°,Período,Comp.,Clave,Sistema,BNA,Atlas,Bancop,Basa,BNF,Citibank,Continental,Do Brasil,Familiar,GNB,Interfisa,Itaú,Solar,Sudameris,UENO,Zeta
+1,2026/01,C,2026/01|C,2,1,2.4,2.6,3.2,1,1.2,2.8,1,3,1.6,3.2,1.8,3.8,3.2,3,1.2
+1,2026/01,A,2026/01|A,2,4.642857,2.142857,1.785714,3.642857,3.357143,1.428571,1.214286,1.714286,2.857143,2.428571,2,1.571429,4.142857,2.357143,1,2.571429
+1,2026/01,M,2026/01|M,2,5,2,3,4,1,2,1,2,1,2,4,2,1,3,4,3
+1,2026/01,E,2026/01|E,2,4.2,2,3,4.6,3,1,1.4,1.6,1,2,3,1.2,3.6,3,2.2,4
+1,2026/01,L,2026/01|L,2,1,2,2.5,3.5,1,1.5,2.5,1,1.5,2,3,2,2.5,3,3,2
+1,2026/01,G,2026/01|G,2,3.168571,2.108571,2.577143,3.788571,1.871429,1.425714,1.782857,1.462857,1.871429,2.005714,3.04,1.714286,3.008571,2.911429,2.64,2.554286
+2,2026/02,C,2026/02|C,1.6,1,1.6,2.2,3.2,1,1.2,2.8,1,2.2,1.6,3.2,1.8,3.8,2.8,3,1.4
+2,2026/02,A,2026/02|A,2,4.642857,2.142857,1.785714,3.642857,3.142857,1.428571,1.571429,2.071429,2.857143,2.428571,2.785714,1.571429,4,2.357143,1,1.928571
+2,2026/02,M,2026/02|M,2,5,3,4,5,1,4,1,4,2,2,4,2,1,3,4,4
+2,2026/02,E,2026/02|E,2,4.2,2,3,4.8,2.6,1.4,1.4,3,1,2.4,3.6,1.6,3.6,3.8,2.2,4
+2,2026/02,L,2026/02|L,2,1,2,2.5,4,1,1.5,2,1,1.5,2,3,2,2.5,3,3.5,2.5
+2,2026/02,G,2026/02|G,1.92,3.168571,2.148571,2.697143,4.128571,1.748571,1.905714,1.754286,2.214286,1.911429,2.085714,3.317143,1.794286,2.98,2.991429,2.74,2.765714
+3,2026/03,C,2026/03|C,2,1,2,2.2,3.2,1,1.2,2.8,1,2.2,1.6,3.2,1.8,3.4,3.2,3.2,1.4
+3,2026/03,A,2026/03|A,2,4.642857,2.142857,1.785714,3.428571,3.142857,1.428571,1.857143,1.714286,3.071429,2.142857,2.785714,2.214286,4.142857,2,1,1.928571
+3,2026/03,M,2026/03|M,2,5,3,4,5,1,4,1,4,2,2,4,1,1,3,4,4
+3,2026/03,E,2026/03|E,2,4.2,2,3,4.4,2.2,1.4,1.4,3.4,1,2,3.2,1.6,3.6,3,2.2,4
+3,2026/03,L,2026/03|L,2,1,2,2.5,3.5,1,1.5,2.5,1,1,2,3,2,2.5,3,4,2
+3,2026/03,G,2026/03|G,2,3.168571,2.228571,2.697143,3.905714,1.668571,1.905714,1.911429,2.222857,1.854286,1.948571,3.237143,1.722857,2.928571,2.84,2.88,2.665714
+4,2026/04,C,2026/04|C,2,1,2,1.8,3.2,1,1.2,2.8,1,2,1.6,2.6,1.4,3.4,3,2.8,1.4
+4,2026/04,A,2026/04|A,2,4.642857,2.571429,1.785714,3.571429,3.142857,1.428571,1.214286,1.714286,3.214286,2.142857,2.785714,2.214286,4.142857,2.357143,1,2.714286
+4,2026/04,M,2026/04|M,2,5,3,3,4,1,5,1,4,2,2,4,1,1,3,3,4
+4,2026/04,E,2026/04|E,2,4.2,1.2,3,3.8,2.2,4.2,1.4,4.2,1,2,3.2,1,3.6,3,2.2,4
+4,2026/04,L,2026/04|L,2,1,2,2.5,4,1,1.5,2,1,2,2,3,2,2.5,3,4,2.5
+4,2026/04,G,2026/04|G,2,3.168571,2.154286,2.417143,3.714286,1.668571,2.665714,1.682857,2.382857,2.042857,1.948571,3.117143,1.522857,2.928571,2.871429,2.6,2.922857
+5,2026/05,C,2026/05|C,1.6,1,2,1.8,3.2,1,1.2,2.4,1,2,1.6,2.2,1.4,3.8,2.8,2.8,1.4
+5,2026/05,A,2026/05|A,2.142857,4.642857,2.571429,1.785714,3.571429,3.142857,1.428571,2,1.714286,3.214286,2.142857,2.785714,2.214286,4.142857,3,1,3.5
+5,2026/05,M,2026/05|M,2,5,3,3,4,2,5,1,4,2,2,4,1,1,3,3,3
+5,2026/05,E,2026/05|E,2,4.2,1.2,3,3.8,2.2,3.4,1.4,4.2,1,2,3,1,3.6,3,2.2,4
+5,2026/05,L,2026/05|L,2,1,2,2.5,4,1,1.5,2.5,1,2,2,3,2,2.5,3.5,3,2
+5,2026/05,G,2026/05|G,1.948571,3.168571,2.154286,2.417143,3.714286,1.868571,2.505714,1.86,2.382857,2.042857,1.948571,2.997143,1.522857,3.008571,3.06,2.4,2.78
+6,2026/06,C,2026/06|C,2,1,2,2.2,3.2,1,1.2,2.8,1,1.8,1.6,2.4,1.4,3.8,2.8,2.8,1.4
+6,2026/06,A,2026/06|A,2.5,4.642857,2.571429,2.357143,3.928571,2.785714,1.642857,1.857143,1.357143,3.571429,2.142857,3.142857,2.214286,4.142857,3.142857,1,3.5
+6,2026/06,M,2026/06|M,2,5,3,3,4,2,4,1,5,2,2,4,1,1,3,3,3
+6,2026/06,E,2026/06|E,2,4.2,2,3,3.8,2.6,1,1.4,4.2,1,2,3.2,1,3.6,3.8,2.2,3.6
+6,2026/06,L,2026/06|L,2,1,2,2.5,4.5,1,1.5,2.5,1,2,2,3,2,3,3.5,3,2.5
+6,2026/06,G,2026/06|G,2.1,3.168571,2.314286,2.611429,3.885714,1.877143,1.868571,1.911429,2.511429,2.074286,1.948571,3.148571,1.522857,3.108571,3.248571,2.4,2.8
+7,2026/07,C,2026/07|C,2,1,2,2.2,3.2,1,1.4,2.6,1,2.4,1.6,2.2,1.4,3.8,2.8,3.6,1.4
+7,2026/07,A,2026/07|A,2.142857,4.642857,2.571429,2,3.571429,3.428571,1.428571,1.857143,1.357143,3.214286,2.142857,2,2.214286,4.142857,2.642857,1,2.214286
+7,2026/07,M,2026/07|M,2,5,3,3,4,2,5,1,5,2,2,4,1,1,3,3,3
+7,2026/07,E,2026/07|E,2,4.2,2,3,3.8,2.2,3.4,1.4,4.2,1,2,3.2,1,3.6,3.8,2.6,3.6
+7,2026/07,L,2026/07|L,2,1,2,2.5,4,1,2,2.5,1,2,2,3,2,3,3.5,3,3
+7,2026/07,G,2026/07|G,2.028571,3.168571,2.314286,2.54,3.714286,1.925714,2.645714,1.871429,2.511429,2.122857,1.948571,2.88,1.522857,3.108571,3.148571,2.64,2.642857
+8,2026/08,C,2026/08|C,2,1,2,2.6,3.2,1,1.2,2.6,1,2.6,1.6,2.6,1.4,3.8,2.8,3.6,1.4
+8,2026/08,A,2026/08|A,2.5,4.285714,2.571429,2,3.571429,3.428571,1.214286,1.857143,1.857143,3.571429,2.142857,2.357143,2.357143,3.928571,3,1,2.714286
+8,2026/08,M,2026/08|M,2,5,3,3,4,2,5,1,5,2,2,4,1,1,3,3,3
+8,2026/08,E,2026/08|E,2,4.2,2,3,3.8,2.2,3.4,1.4,4.6,1,2,2.8,1,3.6,3,2.6,3.6
+8,2026/08,L,2026/08|L,2,1,2,2.5,4,1,1.5,2,1,2,2,3,2,3,3.5,3,2.5
+8,2026/08,G,2026/08|G,2.1,3.097143,2.314286,2.62,3.714286,1.925714,2.462857,1.771429,2.691429,2.234286,1.948571,2.951429,1.551429,3.065714,3.06,2.64,2.642857
+9,2026/09,C,2026/09|C,2,1,2,2.6,3,1,1.4,3,1,2.6,1.6,2.2,1.4,3.8,2.8,3.6,1.8
+9,2026/09,A,2026/09|A,2.142857,4.642857,2.142857,2,3.571429,3.142857,1.214286,2,1.857143,3.571429,2.428571,2,2.214286,3.928571,2.357143,1,2.714286
+9,2026/09,M,2026/09|M,2,5,3,3,4,2,5,1,5,2,2,4,1,1,3,3,3
+9,2026/09,E,2026/09|E,2,4.2,2,3,3.8,2.2,3.4,1.4,4.6,1,2,2.8,1,3.6,3,3,3.6
+9,2026/09,L,2026/09|L,2,1,2,2.5,3.5,1,2,2.5,1,2,2,2.5,2,2.5,3.5,3,2.5
+9,2026/09,G,2026/09|G,2.028571,3.168571,2.228571,2.62,3.574286,1.868571,2.602857,1.98,2.691429,2.234286,2.005714,2.7,1.522857,2.965714,2.931429,2.72,2.722857`;
+const COPIA_BASE = String.raw`Fecha,Clasificación,Ratio,Sistema,BNA,Atlas,Bancop,Basa,BNF,Citibank,Continental,Do Brasil,Familiar,GNB,Interfisa,Itaú,Solar,Sudameris,UENO,Zeta
+2026/01,1. Capital Adecuado,1.04. Patrimonio Efectivo (C1+2),30844301,93225,1212662,722406,1169235,3545160,299360,6155770,153420,1138176,3136075,560538,5412866,341568,3930570,2189958,783312
+2026/02,1. Capital Adecuado,1.04. Patrimonio Efectivo (C1+2),34168157,93116,1483859,799522,1266682,4111437,299650,6149346,156133,1558619,3267168,578260,6671451,340621,4250065,2347275,794953
+2026/03,1. Capital Adecuado,1.04. Patrimonio Efectivo (C1+2),33943616,92382,1427291,798617,1267075,4111437,299650,6003912,155797,1558619,3279268,577799,6671451,370498,4200364,2332878,796579
+2026/04,1. Capital Adecuado,1.04. Patrimonio Efectivo (C1+2),32922499,90982,1409933,790762,1211696,4111437,297984,5981775,155796,1428185,3270041,574437,5871451,367920,4138087,2467236,754778
+2026/05,1. Capital Adecuado,1.04. Patrimonio Efectivo (C1+2),32265360,89239,1411144,791059,1211476,4111437,299650,5529366,155796,1428185,3277046,591132,5871451,360801,3804285,2577162,756131
+2026/06,1. Capital Adecuado,1.04. Patrimonio Efectivo (C1+2),32139415,87699,1427292,792215,1207895,3979066,299650,5506438,155796,1428185,3280776,589356,5871451,358112,3821179,2576776,757528
+2026/07,1. Capital Adecuado,1.04. Patrimonio Efectivo (C1+2),32750254,87685,1414189,805521,1203521,3979066,299650,6133390,155796,1417445,3296050,590935,5871451,357581,3824844,2558805,754325
+2026/08,1. Capital Adecuado,1.04. Patrimonio Efectivo (C1+2),32753989,88535,1415929,801573,1201018,3979066,299650,6124745,155796,1417445,3301873,600103,5871451,357317,3827591,2542395,769502
+2026/09,1. Capital Adecuado,1.04. Patrimonio Efectivo (C1+2),32627126,87556,1417825,799801,1201051,3979066,296259,5977620,155796,1417445,3293819,617554,5871451,357015,3829529,2557859,767481`;
 
 /* ---------- Lectura de CSV ---------- */
 function leerCSV(texto) {
@@ -551,9 +594,22 @@ function numero(s) {
   const n = Number(s);
   return Number.isFinite(n) ? n : null;
 }
-function entero(s) {
-  const d = String(s == null ? "" : s).replace(/[^\d]/g, "");
-  return d ? Number(d) : null;
+/* Puntaje entre 1 y 5, venga con punto o con coma decimal. */
+function enEscala(s) {
+  let n = numero(s);
+  if (n != null && (n < 1 || n > 5)) { const m = Number(String(s).trim().replace(",", ".")); n = Number.isFinite(m) ? m : null; }
+  return n != null && n >= 1 && n <= 5 ? n : null;
+}
+/* Monto entero (patrimonio), con separadores de miles en cualquiera de los dos formatos. */
+function monto(s) {
+  s = String(s == null ? "" : s).trim().replace(/\s/g, "");
+  if (!s) return null;
+  let n;
+  if (/^\d{1,3}([.,]\d{3})+$/.test(s)) n = Number(s.replace(/[.,]/g, ""));
+  else if (/^\d{1,3}(,\d{3})+\.\d+$/.test(s)) n = Number(s.replace(/,/g, ""));
+  else if (/^\d{1,3}(\.\d{3})+,\d+$/.test(s)) n = Number(s.replace(/\./g, "").replace(",", "."));
+  else n = Number(s.replace(",", "."));
+  return Number.isFinite(n) ? Math.round(n) : null;
 }
 function periodoNormal(s) {
   s = String(s == null ? "" : s).trim();
@@ -564,35 +620,46 @@ function periodoNormal(s) {
   return "";
 }
 const r2 = v => Math.round(v * 100) / 100;
+function notaDe(v) {
+  if (v == null) return null;
+  for (const [desde, nota, cat] of ESCALA) if (v >= desde - 1e-9) return { nota, cat };
+  return { nota: 1, cat: "Sólido" };
+}
+function registroVacio(nombre, periodo) {
+  const sistema = plano(nombre) === "sistema";
+  return { clave: plano(nombre), nombre: String(nombre).trim(), sistema, periodo, ordenHoja: null,
+    c: null, a: null, m: null, e: null, l: null, score: null, nota: null, cat: "", varHoja: null, pat: null, part: null };
+}
 
-/* Lee una tabla con encabezado "Entidad" + "Puntaje global" (Resumen o histórico). */
-function leerTabla(texto) {
-  const filas = leerCSV(texto);
+/* Pestaña Resumen: un solo mes, el de "Período analizado". */
+function leerResumen(filas) {
   let cab = -1;
   for (let i = 0; i < filas.length && cab < 0; i++) {
     const p = filas[i].map(plano);
-    if (p.includes("entidad") && p.some(x => x.startsWith("puntaje"))) cab = i;
+    if (p.includes("entidad") && p.some(x => x.startsWith("puntaje global"))) cab = i;
   }
-  if (cab < 0) throw new Error("No se encontró la fila de encabezados (Entidad, Puntaje global).");
+  if (cab < 0) throw new Error("no es Resumen");
   const enc = filas[cab].map(plano);
   const col = (...pruebas) => enc.findIndex(h => pruebas.some(p => typeof p === "string" ? h === p : p.test(h)));
   const C = {
-    orden: col("#"), nombre: col("entidad"), periodo: col(/^periodo/),
+    orden: col("#"), nombre: col("entidad"),
     c: col(/capital/, "c"), a: col(/activos/, "a"), m: col(/gestion/, "m"),
     e: col(/rentab/, "e"), l: col(/liquidez/, "l"),
-    score: col(/^puntaje global/, "puntaje"), nota: col(/^nota/), cat: col(/^categoria/),
+    score: col(/^puntaje global/), nota: col(/^nota/), cat: col(/^categoria/),
     variacion: col(/^variacion/), pat: col(/^patrimonio/), part: col(/^participacion/)
   };
   const dato = (f, i) => (i >= 0 && i < f.length ? f[i] : "");
 
-  let periodo = "", comparado = "";
+  let periodo = "", comparado = "", cargados = null;
   for (const f of filas.slice(0, cab)) {
     f.forEach((celda, j) => {
       const p = plano(celda);
       if (p === "periodo analizado") periodo = periodoNormal(f[j + 1]);
       if (p === "comparado contra") comparado = periodoNormal(f[j + 1]);
+      if (p === "periodos cargados") cargados = numero(f[j + 1]);
     });
   }
+  if (!periodo) throw new Error("Resumen sin período");
 
   const registros = [];
   for (let i = cab + 1; i < filas.length; i++) {
@@ -601,62 +668,140 @@ function leerTabla(texto) {
     if (!nombre) { if (registros.length) break; else continue; }
     const score = numero(dato(f, C.score));
     if (score == null) continue;
-    registros.push({
-      clave: plano(nombre), nombre,
-      sistema: plano(nombre) === "sistema",
-      periodo: C.periodo >= 0 ? periodoNormal(dato(f, C.periodo)) : "",
+    registros.push(Object.assign(registroVacio(nombre, periodo), {
       ordenHoja: numero(dato(f, C.orden)),
       c: numero(dato(f, C.c)), a: numero(dato(f, C.a)), m: numero(dato(f, C.m)),
       e: numero(dato(f, C.e)), l: numero(dato(f, C.l)),
       score, nota: numero(dato(f, C.nota)), cat: dato(f, C.cat).trim(),
       varHoja: numero(dato(f, C.variacion)),
-      pat: entero(dato(f, C.pat)), part: numero(dato(f, C.part))
+      pat: monto(dato(f, C.pat)), part: numero(dato(f, C.part))
+    }));
+  }
+  if (!registros.some(r => !r.sistema)) throw new Error("Resumen sin entidades");
+  return { tipo: "resumen", periodo, comparado, cargados, registros };
+}
+
+/* Pestaña Puntajes: una fila por período y componente (C, A, M, E, L y G = global),
+   una columna por entidad. */
+function leerPuntajes(filas) {
+  let cab = -1, iPer = -1, iComp = -1;
+  for (let i = 0; i < Math.min(filas.length, 40) && cab < 0; i++) {
+    const p = filas[i].map(plano);
+    const a = p.indexOf("periodo"), b = p.findIndex(h => h === "comp." || h === "comp" || h === "componente");
+    if (a >= 0 && b >= 0 && p.includes("sistema")) { cab = i; iPer = a; iComp = b; }
+  }
+  if (cab < 0) throw new Error("no es Puntajes");
+  const cols = [];
+  filas[cab].forEach((h, j) => { if (h.trim() && j > Math.max(iPer, iComp) && plano(h) !== "clave") cols.push([j, h.trim()]); });
+  const mapa = new Map();
+  for (let i = cab + 1; i < filas.length; i++) {
+    const f = filas[i];
+    const per = periodoNormal(f[iPer]), letra = plano(f[iComp]);
+    if (!per || letra.length !== 1 || !"camelg".includes(letra)) continue;
+    cols.forEach(([j, nombre]) => {
+      const v = enEscala(f[j]);
+      if (v == null) return;
+      const k = per + "|" + plano(nombre);
+      if (!mapa.has(k)) mapa.set(k, registroVacio(nombre, per));
+      mapa.get(k)[letra === "g" ? "score" : letra] = v;
     });
   }
-  if (!registros.some(r => !r.sistema)) throw new Error("La tabla no tiene entidades.");
-  return { periodo, comparado, registros };
+  const registros = [...mapa.values()].filter(r => r.score != null);
+  registros.forEach(r => { const n = notaDe(r.score); r.nota = n.nota; r.cat = n.cat; });
+  if (!registros.some(r => !r.sistema)) throw new Error("Puntajes sin datos");
+  return { tipo: "puntajes", registros };
 }
 
-/* ---------- Modelo: período -> entidades ---------- */
-function armarModelo(resumenes, historicos) {
-  const M = new Map();
-  const nuevo = (per, extra) => { const o = Object.assign({ parcial: false, cmpHoja: "", filas: new Map() }, extra); M.set(per, o); return o; };
-
-  resumenes.forEach(res => {
-    const actual = nuevo(res.periodo, { cmpHoja: res.comparado });
-    res.registros.forEach(r => actual.filas.set(r.clave, r));
-  });
-  historicos.forEach(h => {
-    const vistos = new Set();
-    h.registros.forEach(r => {
-      if (!r.periodo) return;
-      if (!vistos.has(r.periodo)) { vistos.add(r.periodo); nuevo(r.periodo, {}); }
-      M.get(r.periodo).filas.set(r.clave, r);
-    });
-  });
-  // Mes de comparación de una hoja Resumen: si ninguna fuente lo trae completo,
-  // solo se puede reconstruir el puntaje global (puntaje − variación).
-  resumenes.forEach(res => {
-    if (!res.comparado || res.comparado === res.periodo || M.has(res.comparado)) return;
-    const previo = nuevo(res.comparado, { parcial: true, origen: res.periodo });
-    res.registros.forEach(r => {
-      if (r.varHoja == null) return;
-      previo.filas.set(r.clave, {
-        clave: r.clave, nombre: r.nombre, sistema: r.sistema, ordenHoja: null,
-        c: null, a: null, m: null, e: null, l: null,
-        score: r2(r.score - r.varHoja), nota: null, cat: "", varHoja: null, pat: null, part: null
-      });
-    });
-  });
-  return M;
+/* Pestaña Base: de acá solo se toma el patrimonio efectivo de cada mes. */
+function leerBase(filas) {
+  let cab = -1, iFecha = -1, iRatio = -1;
+  for (let i = 0; i < Math.min(filas.length, 40) && cab < 0; i++) {
+    const p = filas[i].map(plano);
+    const a = p.indexOf("fecha"), b = p.indexOf("ratio");
+    if (a >= 0 && b >= 0 && p.includes("sistema")) { cab = i; iFecha = a; iRatio = b; }
+  }
+  if (cab < 0) throw new Error("no es Base");
+  const cols = [];
+  filas[cab].forEach((h, j) => { if (h.trim() && j > iRatio) cols.push([j, h.trim()]); });
+  const registros = []; let per = "";
+  for (let i = cab + 1; i < filas.length; i++) {
+    const f = filas[i];
+    const pf = periodoNormal(f[iFecha]);
+    if (pf) per = pf;
+    if (!per || String(f[iRatio] || "").trim().indexOf(CONFIG.CODIGO_PATRIMONIO) !== 0) continue;
+    cols.forEach(([j, nombre]) => { const v = monto(f[j]); if (v != null) registros.push({ periodo: per, clave: plano(nombre), pat: v }); });
+  }
+  if (!registros.length) throw new Error("Base sin patrimonio");
+  return { tipo: "base", registros };
 }
 
-/* Qué trae un CSV que no se pudo usar (para avisarlo en el pie). */
+/* Reconoce qué pestaña es un CSV. Devuelve null si no es ninguna de las tres. */
+function clasificar(texto) {
+  if (/^\s*<(!doctype|html)/i.test(texto)) return null;
+  const filas = leerCSV(texto);
+  for (const leer of [leerPuntajes, leerResumen, leerBase]) {
+    try { return leer(filas); } catch (e) { /* probar la siguiente */ }
+  }
+  return null;
+}
 function describir(texto) {
   if (/^\s*<(!doctype|html)/i.test(texto)) return "devolvió una página web y no un CSV; revisá que esté publicado como CSV.";
   const fila = leerCSV(texto).map(f => f.map(c => c.replace(/\s+/g, " ").trim()).filter(Boolean)).find(f => f.length >= 2);
-  return "su primera pestaña no tiene columnas Entidad y Puntaje global, así que de ahí no se pueden sacar puntajes" +
+  return "no es la pestaña Resumen, Puntajes ni Base" +
     (fila ? ". Empieza con: " + fila.slice(0, 6).map(c => c.slice(0, 28)).join(", ") + "." : " (está vacía).");
+}
+
+/* ---------- Modelo: período -> entidades ---------- */
+function armarModelo(d) {
+  const M = new Map();
+  const nuevo = (per, extra) => { const o = Object.assign({ parcial: false, cmpHoja: "", fuente: "", distintos: 0, filas: new Map() }, extra); M.set(per, o); return o; };
+
+  // 1. Historial: copia guardada y, encima, lo que venga en vivo de Puntajes.
+  d.puntajes.forEach(src => {
+    const vistos = new Set();
+    src.registros.forEach(r => {
+      if (!vistos.has(r.periodo)) { vistos.add(r.periodo); nuevo(r.periodo, { fuente: src.fuente }); }
+      M.get(r.periodo).filas.set(r.clave, Object.assign({}, r));
+    });
+  });
+  // 2. Patrimonio de cada mes y participación sobre el sistema.
+  d.bases.forEach(src => src.registros.forEach(b => {
+    const per = M.get(b.periodo), r = per && per.filas.get(b.clave);
+    if (r) r.pat = b.pat;
+  }));
+  M.forEach(per => {
+    const s = per.filas.get("sistema");
+    if (!s || !s.pat) return;
+    per.filas.forEach(r => { r.part = r.pat != null ? r.pat / s.pat * 100 : null; });
+  });
+  // 3. El Resumen en vivo manda sobre su mes: si coincide con el historial solo completa datos;
+  //    si no coincide, reemplaza la fila.
+  d.resumenes.forEach(res => {
+    const per = M.get(res.periodo) || nuevo(res.periodo, { fuente: "resumen" });
+    per.cmpHoja = res.comparado;
+    res.registros.forEach(r => {
+      const x = per.filas.get(r.clave);
+      if (x && Math.abs(x.score - r.score) <= 0.0051) {
+        ["nota", "pat", "part", "ordenHoja", "varHoja"].forEach(k => { if (r[k] != null) x[k] = r[k]; });
+        if (r.cat) x.cat = r.cat;
+        ["c", "a", "m", "e", "l"].forEach(k => { if (x[k] == null) x[k] = r[k]; });
+      } else {
+        if (x) per.distintos++;
+        per.filas.set(r.clave, Object.assign({}, r));
+      }
+    });
+  });
+  // 4. Mes de comparación del Resumen que no esté en el historial:
+  //    solo se puede reconstruir el puntaje global (puntaje − variación).
+  d.resumenes.forEach(res => {
+    if (!res.comparado || res.comparado === res.periodo || M.has(res.comparado)) return;
+    const previo = nuevo(res.comparado, { parcial: true, origen: res.periodo, fuente: "resumen" });
+    res.registros.forEach(r => {
+      if (r.varHoja == null) return;
+      previo.filas.set(r.clave, Object.assign(registroVacio(r.nombre, res.comparado), { score: r2(r.score - r.varHoja) }));
+    });
+  });
+  return M;
 }
 
 /* Puesto de cada entidad en un período (1 = mejor puntaje). */
@@ -681,7 +826,7 @@ const fVar = v => (v == null ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math
 const fMiles = v => (v == null ? "—" : v.toLocaleString("en-US"));
 const fPct = v => (v == null ? "—" : v.toFixed(1) + "%");
 const fPuesto = n => (n == null ? "—" : n + ".º");
-const nivel = v => (v == null ? 0 : Math.min(5, Math.max(1, Math.round(v))));
+const nivel = v => (v == null ? 0 : notaDe(Math.max(1, v)).nota);
 const posicion = v => Math.min(100, Math.max(0, (v - 1) / 4 * 100)) + "%";
 const escapar = s => String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
 function tendencia(v) {
@@ -844,8 +989,9 @@ function dibujar() {
   const puestos = puestosDe(per);
   const filas = [...per.filas.values()].map(r => {
     const b = prev ? prev.filas.get(r.clave) : null;
-    const variacion = b && b.score != null ? r2(r.score - b.score)
-      : (r.varHoja != null && comparar && comparar === per.cmpHoja ? r.varHoja : null);
+    // Para el mes y la comparación que publica el Resumen se usa su propia variación.
+    const variacion = r.varHoja != null && comparar && comparar === per.cmpHoja ? r.varHoja
+      : (b && b.score != null ? r2(r.score - b.score) : null);
     return Object.assign({}, r, { variacion, previo: b ? b.score : null, puesto: puestos.get(r.clave) });
   });
   const sistema = filas.find(r => r.sistema) || null;
@@ -967,48 +1113,100 @@ async function bajar(url) {
   try { return await intento(url + (url.includes("?") ? "&" : "?") + "_=" + Date.now()); }
   catch (e) { return await intento(url); }
 }
+const bajarSeguro = url => bajar(url).catch(e => { console.warn("Sin respuesta:", url, e); return null; });
+
+/* Busca los números de las demás pestañas en la versión web del documento publicado. */
+async function descubrirGids(base, conocidos) {
+  try {
+    const html = await bajar(base + "/pubhtml");
+    const gids = new Set(), re = /gid(?:=|\\x3d|\\u003d|%3D|["']?\s*:\s*["'])(\d+)/gi;
+    let m;
+    while ((m = re.exec(html))) if (!conocidos.has(m[1])) gids.add(m[1]);
+    return [...gids].slice(0, 20);
+  } catch (e) { return []; }
+}
+
+function copiaGuardada() {
+  return { puntajes: [Object.assign(leerPuntajes(leerCSV(COPIA_PUNTAJES)), { fuente: "copia" })],
+    bases: [leerBase(leerCSV(COPIA_BASE))], resumenes: [] };
+}
+const rangoMeses = meses => (meses.length === 1 ? "1 mes (" + mesLargo(meses[0])
+  : meses.length + " meses (" + mesLargo(meses[0]) + " a " + mesLargo(meses[meses.length - 1])) + ")";
 
 async function cargar() {
   const est = $("estadoFuente");
   est.textContent = "Leyendo el Google Sheet…";
-  const textos = await Promise.all(CONFIG.FUENTES.map(f => bajar(f.url).catch(e => { console.warn(f.nombre, e); return null; })));
-  const resumenes = [], historicos = [], notas = [];
-  CONFIG.FUENTES.forEach((f, k) => {
-    const texto = textos[k];
-    if (texto == null) { notas.push(f.nombre + ": no respondió."); return; }
-    let t;
-    try { t = leerTabla(texto); } catch (e) { notas.push(f.nombre + ": " + describir(texto)); return; }
-    const meses = [...new Set(t.registros.map(r => r.periodo).filter(Boolean))].sort();
-    if (meses.length) {
-      historicos.push(t);
-      notas.push(f.nombre + ": " + (meses.length === 1 ? "1 mes (" + mesLargo(meses[0])
-        : meses.length + " meses (" + mesLargo(meses[0]) + " a " + mesLargo(meses[meses.length - 1])) + ").");
-    } else if (t.periodo) {
-      const repetido = resumenes.some(r => r.periodo === t.periodo);
-      if (!repetido) resumenes.push(t);
-      notas.push(f.nombre + ": " + (repetido
-        ? "trae la misma hoja Resumen de " + mesLargo(t.periodo) + ", no agrega meses."
-        : "hoja Resumen de " + mesLargo(t.periodo) + "."));
-    } else notas.push(f.nombre + ": tiene la tabla de puntajes pero no dice de qué mes es, no se usó.");
+  const base = CONFIG.DOCUMENTO_URL.split("/pub")[0];
+  const pestana = gid => base + "/pub?gid=" + gid + "&single=true&output=csv";
+  const fuentes = [
+    { nombre: "Pestaña Resumen", url: pestana(CONFIG.GID_RESUMEN) },
+    { nombre: "Documento completo", url: CONFIG.DOCUMENTO_URL }
+  ];
+  if (CONFIG.GID_PUNTAJES) fuentes.push({ nombre: "Pestaña Puntajes", url: pestana(CONFIG.GID_PUNTAJES) });
+  if (CONFIG.GID_BASE) fuentes.push({ nombre: "Pestaña Base", url: pestana(CONFIG.GID_BASE) });
+  const conocidos = new Set([CONFIG.GID_RESUMEN, CONFIG.GID_PUNTAJES, CONFIG.GID_BASE].filter(Boolean).map(String));
+  if (CONFIG.BUSCAR_PESTANAS && !conocidos.has("0")) { fuentes.push({ nombre: "gid 0", url: pestana("0"), oculta: true }); conocidos.add("0"); }
+
+  const [textos, hallados] = await Promise.all([
+    Promise.all(fuentes.map(f => bajarSeguro(f.url))),
+    CONFIG.BUSCAR_PESTANAS ? descubrirGids(base, conocidos) : []
+  ]);
+  const extras = hallados.map(g => ({ nombre: "gid " + g, url: pestana(g), oculta: true }));
+  const textosExtra = await Promise.all(extras.map(f => bajarSeguro(f.url)));
+
+  const d = copiaGuardada();
+  const notas = [], vistos = new Map();
+  let puntajesVivo = false, respondio = false;
+  fuentes.concat(extras).forEach((f, k) => {
+    const texto = k < textos.length ? textos[k] : textosExtra[k - textos.length];
+    if (texto == null) { if (!f.oculta) notas.push(f.nombre + ": no respondió."); return; }
+    if (vistos.has(texto)) { if (!f.oculta) notas.push(f.nombre + ": devuelve lo mismo que «" + vistos.get(texto) + "» (la primera pestaña del documento)."); return; }
+    vistos.set(texto, f.nombre);
+    const t = clasificar(texto);
+    if (!t) { if (!f.oculta) notas.push(f.nombre + ": " + describir(texto)); return; }
+    respondio = true;
+    const meses = [...new Set(t.registros.map(r => r.periodo))].sort();
+    const sola = f.oculta ? " (encontrada sola, " + f.nombre + ")" : "";
+    if (t.tipo === "resumen") {
+      if (d.resumenes.some(r => r.periodo === t.periodo)) { if (!f.oculta) notas.push(f.nombre + ": trae otra vez el Resumen de " + mesLargo(t.periodo) + "."); return; }
+      d.resumenes.push(t);
+      notas.push((f.oculta ? "Otra pestaña tipo Resumen" + sola : f.nombre) + ": mes publicado en la hoja, " + mesLargo(t.periodo) + ".");
+    } else if (t.tipo === "puntajes") {
+      d.puntajes.push(Object.assign(t, { fuente: "vivo" })); puntajesVivo = true;
+      notas.push("Pestaña Puntajes" + sola + ": " + rangoMeses(meses) + " en vivo.");
+    } else {
+      d.bases.push(t);
+      notas.push("Pestaña Base" + sola + ": patrimonio de " + rangoMeses(meses) + " en vivo.");
+    }
   });
-  const enVivo = resumenes.length + historicos.length > 0;
-  if (!enVivo) resumenes.push(leerTabla(RESPALDO_CSV));
-  MODELO = armarModelo(resumenes, historicos);
-  const hoja = resumenes.length ? resumenes[0].periodo : [...MODELO.keys()].sort().pop();
+
+  MODELO = armarModelo(d);
+  const ordenados = [...MODELO.keys()].sort();
+  const hoja = d.resumenes.length ? d.resumenes[0].periodo : ordenados[ordenados.length - 1];
   const cambioHoja = periodoHoja && hoja !== periodoHoja;
   periodoHoja = hoja;
   if (cambioHoja || !estado.periodo) { estado.periodo = periodoHoja; estado.comparar = ""; }
   dibujar();
+
   const hora = new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
-  const lineas = [enVivo ? "Datos leídos del Google Sheet a las " + hora + "."
-    : "No se pudo leer el Google Sheet. Se muestra la copia de " + mesLargo(periodoHoja) + " guardada en esta página."].concat(notas);
+  const lineas = [respondio ? "Datos leídos del Google Sheet a las " + hora + "."
+    : "No se pudo leer el Google Sheet. Se muestra la copia guardada en esta página."].concat(notas);
+  const deCopia = ordenados.filter(p => MODELO.get(p).fuente === "copia");
+  if (!puntajesVivo && deCopia.length) lineas.push("Historial: " + rangoMeses(deCopia) + " de la copia guardada el " + COPIA_FECHA +
+    ". Para que se actualice solo, escribí el número de la pestaña Puntajes en GID_PUNTAJES (pasos en el README).");
+  const viejo = d.resumenes.find(r => MODELO.get(r.periodo).fuente === "copia" && MODELO.get(r.periodo).distintos > 0);
+  if (viejo) lineas.push("Ojo: el Resumen de " + mesLargo(viejo.periodo) + " ya no coincide con la copia guardada (" +
+    MODELO.get(viejo.periodo).distintos + (MODELO.get(viejo.periodo).distintos === 1 ? " entidad" : " entidades") + "). Ese mes usa el Resumen; los demás pueden estar desactualizados.");
+  const cargados = d.resumenes.length ? d.resumenes[0].cargados : null;
+  const completos = ordenados.filter(p => !MODELO.get(p).parcial).length;
+  if (cargados && completos < cargados) lineas.push("El Sheet tiene " + cargados + " meses cargados y acá hay " + completos + " completos.");
   est.innerHTML = lineas.map(l => "<span>" + escapar(l) + "</span>").join("");
 }
 
 // Primero la copia guardada (la página nunca queda vacía), después los datos en vivo.
 try {
-  const r = leerTabla(RESPALDO_CSV);
-  periodoHoja = r.periodo; MODELO = armarModelo([r], []); estado.periodo = r.periodo; dibujar();
+  MODELO = armarModelo(copiaGuardada());
+  periodoHoja = [...MODELO.keys()].sort().pop(); estado.periodo = periodoHoja; dibujar();
 } catch (e) { console.error(e); }
 $("recargar").addEventListener("click", cargar);
 cargar();

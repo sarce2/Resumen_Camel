@@ -1,8 +1,10 @@
 # Calificación CAMEL de bancos
 
-Página de una sola hoja (`index.html`) que muestra el scoring CAMEL de los bancos: puntaje global, posición, nota, variación y componentes C-A-M-E-L. Tiene una lista para elegir el mes y otra para ver un solo banco.
+Página de una sola hoja (`index.html`) que muestra el scoring CAMEL de los bancos: puntaje global, posición, nota, variación, componentes C-A-M-E-L, patrimonio y participación.
 
-Los datos no están fijos: cada vez que se abre, la página los lee del Google Sheet publicado. Si el Sheet no responde, muestra la copia de septiembre de 2026 guardada dentro del archivo.
+- **Lista de mes:** todos los meses cargados (hoy, enero a septiembre de 2026).
+- **Lista de banco:** muestra un solo banco con su posición, su puntaje y su evolución mes a mes.
+- **Comparar contra:** por defecto el mes anterior; se puede elegir cualquier otro.
 
 ## Publicarla gratis con GitHub Pages
 
@@ -15,41 +17,60 @@ Para actualizar la página más adelante, subí de nuevo `index.html` con el mis
 
 ## De dónde salen los datos
 
-Los links están al principio del bloque `<script>` de `index.html`, en `CONFIG.FUENTES`:
+La página combina dos cosas:
 
-| Fuente | Link |
+| Origen | Qué aporta |
 |---|---|
-| Pestaña Resumen | `…/pub?gid=611378809&single=true&output=csv` |
-| Documento completo | `…/pub?output=csv` |
+| **Copia guardada dentro de `index.html`** | Los 9 meses de la pestaña **Puntajes** y el patrimonio de la pestaña **Base**, sacados del Excel el 16/11/2026. Con esto la lista de mes siempre tiene todos los meses, aunque Google no responda. |
+| **Google Sheet publicado, en vivo** | Cada vez que se abre la página lee el link publicado. La pestaña **Resumen** manda sobre su mes: si en el Sheet aparece un mes nuevo, la página lo suma sola. |
 
-Cada link puede traer:
+El link publicado está al principio del bloque `<script>`, en `CONFIG.DOCUMENTO_URL`:
 
-- una hoja tipo **Resumen**: un solo mes, el que esté en "Período a analizar";
-- una **tabla con todos los meses**: una fila por entidad y período, con columnas `Período`, `Entidad` y `Puntaje global` (y, si están, `C`, `A`, `M`, `E`, `L`, `Nota CAMEL`, `Categoría`, `Patrimonio efectivo`, `Participación`).
-
-La página junta los meses de todos los links y los muestra en la lista de mes.
-
-### Agregar otra pestaña
-
-Publicá la pestaña como CSV en Google Sheets (**Archivo → Compartir → Publicar en la web**) y agregá una línea en `CONFIG.FUENTES`:
-
-```js
-{ nombre: "Histórico", url: "https://docs.google.com/spreadsheets/d/e/…/pub?gid=NÚMERO&single=true&output=csv" }
+```
+https://docs.google.com/spreadsheets/d/e/2PACX-1vTglShja49GBgQX7qzsKUqE6sgwxhMMVaTyrw7i7WCfmCxtbFBzDdTwo2mqyCSKFyTRenh2tbqXKn5Z/pub?output=csv
 ```
 
-## Si faltan meses
+Ese link, tal cual, devuelve solo la **primera** pestaña del documento (Resumen). Las otras pestañas se piden con su número (`gid`).
 
-Mirá el pie de la página: hay una línea por link que dice qué encontró.
+## Que todo el historial se lea en vivo (recomendado)
 
-- **"hoja Resumen de …"**: ese link trae un solo mes.
-- **"trae la misma hoja Resumen …, no agrega meses"**: los dos links devuelven la misma pestaña. Un link `pub?output=csv` sin `gid` devuelve solo la primera pestaña del documento.
-- **"su primera pestaña no tiene columnas Entidad y Puntaje global"**: esa pestaña no tiene puntajes calculados; el pie muestra con qué columnas empieza.
+Sin este paso, los meses anteriores salen de la copia guardada: son correctos al 16/11/2026, pero no se enteran si después cambiás la Base o los Parámetros.
+
+1. Abrí el Google Sheet y hacé clic en la pestaña **Puntajes**.
+2. Mirá la dirección del navegador: termina en `#gid=` seguido de un número. Copiá ese número.
+3. En `index.html`, buscá `GID_PUNTAJES: ""` y escribí el número entre las comillas. Por ejemplo: `GID_PUNTAJES: "123456789"`.
+4. Opcional: hacé lo mismo con la pestaña **Base** en `GID_BASE`, para que el patrimonio de los meses nuevos también llegue en vivo.
+5. Subí de nuevo `index.html` a GitHub.
+
+El documento tiene que estar publicado completo: **Archivo → Compartir → Publicar en la web → Todo el documento**, con **Volver a publicar automáticamente cuando se realicen cambios** marcado.
+
+La página también intenta encontrar esas pestañas sola. Si lo logra, el pie dice "Pestaña Puntajes (encontrada sola…)" y no hace falta tocar nada.
+
+## Cómo leer el pie de la página
+
+Hay una línea por cada cosa que la página leyó:
+
+- **"Pestaña Resumen: mes publicado en la hoja, …"**: se leyó el Resumen en vivo.
+- **"Documento completo: devuelve lo mismo que «Pestaña Resumen»"**: es lo normal; el link sin `gid` trae la primera pestaña.
+- **"Pestaña Puntajes: 9 meses (…) en vivo"**: el historial completo viene del Sheet.
+- **"Historial: 9 meses (…) de la copia guardada el 16/11/2026"**: el historial sale de la copia; falta `GID_PUNTAJES`.
+- **"Ojo: el Resumen de … ya no coincide con la copia guardada"**: cambiaron datos o parámetros en el Sheet después de la copia. Ese mes usa el Resumen; para los demás hace falta `GID_PUNTAJES` o una copia nueva.
+- **"El Sheet tiene N meses cargados y acá hay M completos"**: hay meses nuevos que todavía no llegan a la página.
 - **"no respondió"**: el link no está publicado o no hay conexión.
 
-Un mes marcado como "solo puntaje global" es el mes de comparación del Resumen: su puntaje se reconstruye como puntaje del mes analizado menos la variación, y no trae nota ni componentes.
+## Cómo se calcula cada dato
+
+- **Puntaje global y componentes:** tal cual están en la pestaña Puntajes (filas C, A, M, E, L y G).
+- **Nota CAMEL y categoría:** con la escala de la hoja Parámetros: desde 1.0 Sólido, desde 1.5 Satisfactorio, desde 2.5 Aceptable, desde 3.5 Débil, desde 4.5 Crítico.
+- **Posición:** orden por puntaje global dentro del mes (1 = mejor).
+- **Variación:** puntaje del mes menos puntaje del mes de comparación. Negativa = mejora.
+- **Patrimonio efectivo:** ratio 1.04 de la Base. **Participación:** patrimonio de la entidad sobre el del sistema.
+
+Septiembre de 2026, calculado así, coincide con la pestaña Resumen en las 17 filas y en todas las columnas.
+
+Si cambiás la escala en Parámetros, hay que cambiarla también en `ESCALA`, al principio del `<script>`.
 
 ## Cosas a saber
 
 - Google tarda unos minutos en republicar después de un cambio en el Sheet. El botón **Volver a leer** recarga los datos sin recargar la página.
-- Menor puntaje = mejor. Escala: 1 Sólido, 2 Satisfactorio, 3 Aceptable, 4 Débil, 5 Crítico. Variación negativa = mejora.
 - La página usa la tipografía Figtree de Google Fonts; sin conexión usa la del sistema.
