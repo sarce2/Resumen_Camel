@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calificación CAMEL de bancos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400..800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    /* Verdes de la página */
+    --bosque: #062a1e;
+    --bosque-2: #0b3d2b;
+    --verde: #12714b;
+    --brote: #5fd38d;
+    --bg: #eff5f0;
+    --panel: #ffffff;
+    --cab: #e9f3ec;
+    --hover: #f3f9f5;
+    --ink: #0c2a1f;
+    --ink-2: #47635a;
+    --ink-3: #7f968d;
+    --rule: #d8e5dc;
+    --sombra: 0 18px 40px -26px rgba(6, 42, 30, .45);
+    /* Escala 1 a 5: verde = mejor, gris = punto medio, rojo = mayor riesgo */
+    --r1-rgb: 15 107 63;
+    --r2-rgb: 104 190 122;
+    --r3-rgb: 163 166 152;
+    --r4-rgb: 226 140 62;
+    --r5-rgb: 200 55 45;
+    --tinte: .26;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --bosque: #041c14;
+      --bosque-2: #072b1e;
+      --verde: #58cf8a;
+      --bg: #071a13;
+      --panel: #0d281d;
+      --cab: #123425;
+      --hover: #123425;
+      --ink: #eaf5ee;
+      --ink-2: #b1c9bd;
+      --ink-3: #7f998d;
+      --rule: #1f4633;
+      --sombra: none;
+      --r1-rgb: 74 201 128;
+      --r2-rgb: 46 132 84;
+      --r3-rgb: 125 130 118;
+      --r4-rgb: 201 119 58;
+      --r5-rgb: 236 88 78;
+      --tinte: .36;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Figtree", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.45;
+  }
+  .wrap { max-width: 1320px; margin: 0 auto; padding: 0 28px; }
+
+  /* Cabecera verde */
+  .hero {
+    position: relative; overflow: hidden;
+    background: linear-gradient(160deg, var(--bosque-2), var(--bosque) 70%);
+    color: #fff;
+    padding: 48px 0 104px;
+  }
+  .hero::after {
+    content: ""; position: absolute; right: -150px; top: -210px; width: 620px; height: 620px;
+    border-radius: 50%; pointer-events: none;
+    background: radial-gradient(closest-side,
+      transparent 46%, rgba(95, 211, 141, .11) 46.4%, rgba(95, 211, 141, .11) 55%,
+      transparent 55.4%, transparent 68%, rgba(95, 211, 141, .07) 68.4%, rgba(95, 211, 141, .07) 80%,
+      transparent 80.4%, transparent 92%, rgba(95, 211, 141, .04) 92.4%);
+  }
+  .hero .wrap { position: relative; z-index: 1; }
+  h1 {
+    margin: 0;
+    font-size: clamp(30px, 4.6vw, 50px);
+    line-height: 1.04; font-weight: 800; letter-spacing: -0.025em;
+  }
+  .lede { margin: 12px 0 0; color: #cbe6d6; font-size: 17px; max-width: 60ch; }
+  .lede strong { color: #fff; font-weight: 700; }
+
+  .controles { display: flex; flex-wrap: wrap; gap: 14px 16px; margin-top: 30px; }
+  .campo { display: flex; flex-direction: column; gap: 6px; color: #b9dcc8; font-size: 13.5px; font-weight: 500; }
+  .campo select {
+    color-scheme: light;
+    -webkit-appearance: none; appearance: none;
+    font: inherit; font-size: 16px; font-weight: 650; color: #0c2a1f;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1.5 1.5 7 7l5.5-5.5' fill='none' stroke='%2312714b' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 16px center;
+    border: 2px solid transparent; border-radius: 12px;
+    padding: 11px 44px 11px 16px; min-width: 230px; cursor: pointer;
+  }
+  .campo select:hover { border-color: var(--brote); }
+  .campo select:focus-visible { outline: 3px solid var(--brote); outline-offset: 2px; }
+  .aviso {
+    margin: 18px 0 0; padding: 10px 14px; max-width: 86ch;
+    border-left: 3px solid var(--brote); border-radius: 0 8px 8px 0;
+    background: rgba(255, 255, 255, .08); color: #dcf1e4; font-size: 14px;
+  }
+
+  .cuerpo { position: relative; z-index: 2; margin-top: -68px; padding-bottom: 48px; }
+
+  /* Tarjetas de resumen */
+  .tarjetas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .tarjeta {
+    position: relative; background: var(--panel); border: 1px solid var(--rule); border-radius: 16px;
+    padding: 18px 22px 20px 26px; box-shadow: var(--sombra); min-width: 0; overflow: hidden;
+  }
+  .tarjeta::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px;
+    background: var(--c, var(--ink-3));
+  }
+  .rotulo { color: var(--ink-2); font-size: 14px; font-weight: 500; }
+  .tarjeta .dato {
+    display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 12px;
+    margin-top: 4px; font-size: 28px; font-weight: 800; letter-spacing: -0.02em;
+  }
+  .tarjeta .dato .valor { font-variant-numeric: tabular-nums; }
+  .tarjeta .pie { margin-top: 2px; color: var(--ink-2); font-size: 14px; }
+
+  /* Ficha de un banco */
+  .ficha {
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 16px;
+    box-shadow: var(--sombra); padding: 26px 30px 24px;
+  }
+  .ficha-cab { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+  .ficha h2 { margin: 0; font-size: 32px; line-height: 1.1; font-weight: 800; letter-spacing: -0.025em; }
+  .pastilla {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 5px 13px 5px 10px; border-radius: 999px; font-size: 14.5px; font-weight: 600;
+    background: rgb(var(--c-rgb, 127 150 141) / var(--tinte));
+  }
+  .ficha-datos {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    margin-top: 22px; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
+  }
+  .ficha-datos > div { padding: 18px 22px 18px 0; min-width: 0; }
+  .ficha-datos > div + div { padding-left: 22px; border-left: 1px solid var(--rule); }
+  .grande {
+    margin-top: 2px; font-size: 46px; line-height: 1.05; font-weight: 800; letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .grande small { font-size: 19px; font-weight: 650; letter-spacing: 0; color: var(--ink-2); margin-left: 1px; }
+  .pie { margin-top: 4px; color: var(--ink-2); font-size: 14px; }
+
+  .contexto { margin-top: 22px; }
+  .contexto .rotulo { margin-bottom: 4px; }
+  .pista { position: relative; height: 98px; margin: 0 52px; }
+  .pista::before {
+    content: ""; position: absolute; left: 0; right: 0; top: 46px; height: 4px; margin-top: -2px;
+    background: var(--rule); border-radius: 4px;
+  }
+  .pista .otro {
+    position: absolute; top: 46px; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%;
+    background: var(--ink-3); opacity: .5; box-shadow: 0 0 0 1.5px var(--panel);
+  }
+  .pista .sis {
+    position: absolute; top: 28px; height: 36px; width: 0; margin-left: -1px;
+    border-left: 2px dotted var(--ink-2);
+    transition: left .55s cubic-bezier(.2,.7,.2,1);
+  }
+  .pista .tramo {
+    position: absolute; top: 46px; height: 3px; margin-top: -1.5px; background: var(--ink);
+    transition: left .55s cubic-bezier(.2,.7,.2,1), width .55s cubic-bezier(.2,.7,.2,1), opacity .3s;
+  }
+  .pista .aro {
+    position: absolute; top: 46px; width: 3px; height: 16px; margin: -8px 0 0 -1.5px; background: var(--ink);
+    transition: left .55s cubic-bezier(.2,.7,.2,1), opacity .3s;
+  }
+  .pista .punto {
+    position: absolute; top: 46px; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%;
+    background: var(--c, var(--ink-2)); box-shadow: 0 0 0 3px var(--panel);
+    transition: left .55s cubic-bezier(.2,.7,.2,1), background-color .3s;
+  }
+  .pista .etq {
+    position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap;
+    font-size: 15px; font-weight: 750; font-variant-numeric: tabular-nums;
+    transition: left .55s cubic-bezier(.2,.7,.2,1);
+  }
+  .pista .grad span {
+    position: absolute; top: 66px; transform: translateX(-50%); white-space: nowrap;
+    color: var(--ink-2); font-size: 13.5px; text-align: center;
+  }
+  .pista .grad span::before {
+    content: ""; position: absolute; left: 50%; top: -26px; width: 1px; height: 12px; background: var(--ink-3); opacity: .7;
+  }
+  .pista .grad b { color: var(--ink); font-weight: 750; }
+  .pista .grad i { font-style: normal; }
+  .claves { display: flex; flex-wrap: wrap; gap: 6px 20px; color: var(--ink-2); font-size: 13.5px; }
+  .claves span { display: inline-flex; align-items: center; gap: 7px; }
+  .k-banco { width: 14px; height: 14px; border-radius: 50%; background: var(--c, var(--ink-2)); }
+  .k-otro { width: 10px; height: 10px; border-radius: 50%; background: var(--ink-3); opacity: .5; }
+  .k-sis { width: 0; height: 16px; border-left: 2px dotted var(--ink-2); }
+  .k-cola { width: 16px; height: 12px; border-left: 3px solid var(--ink); background: linear-gradient(var(--ink), var(--ink)) 0 50% / 100% 3px no-repeat; }
+
+  .historia { margin-top: 22px; }
+  .historia .fila-meses { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .historia button {
+    font: inherit; text-align: left; cursor: pointer; color: var(--ink);
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 9px 14px 10px; min-width: 104px;
+  }
+  .historia button:hover { border-color: var(--verde); }
+  .historia button[aria-pressed="true"] { background: var(--cab); border-color: var(--verde); box-shadow: inset 0 0 0 1px var(--verde); }
+  .historia button:focus-visible, .fuente button:focus-visible { outline: 3px solid var(--brote); outline-offset: 2px; }
+  .historia .hm { display: block; color: var(--ink-2); font-size: 13px; }
+  .historia .hv { display: block; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .historia .hp { display: block; color: var(--ink-2); font-size: 13px; }
+
+  /* Tabla */
+  .tabla-caja {
+    position: relative; margin-top: 16px; overflow-x: auto;
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 16px; box-shadow: var(--sombra);
+  }
+  table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1000px; font-size: 14.5px; }
+  th, td { padding: 10px 8px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--rule); }
+  th:first-child, td:first-child { padding-left: 16px; }
+  th:last-child, td:last-child { padding-right: 16px; }
+  th:last-child button { padding-right: 16px !important; }
+  tbody tr:last-child td { border-bottom: 0; }
+  thead th {
+    vertical-align: bottom; background: var(--cab);
+    font-weight: 600; font-size: 13px; color: var(--ink-2);
+    border-bottom: 1px solid var(--rule);
+  }
+  th.comp-col { width: 62px; }
+  thead th .letra { display: block; font-size: 18px; font-weight: 800; color: var(--verde); }
+  th.izq, td.izq { text-align: left; }
+  th.ordenable { padding: 0; }
+  th.ordenable button {
+    all: unset; box-sizing: border-box; display: block; width: 100%;
+    padding: 10px 8px; cursor: pointer; text-align: inherit;
+  }
+  th.ordenable button:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+  th.ordenable button:focus-visible { outline: 2px solid var(--verde); outline-offset: -2px; }
+  th.ordenable button::after { font-size: 11px; }
+  th[aria-sort="ascending"] button::after { content: " ↑"; color: var(--verde); }
+  th[aria-sort="descending"] button::after { content: " ↓"; color: var(--verde); }
+
+  td { font-variant-numeric: tabular-nums; background: var(--panel); }
+  tbody tr:hover td { background: var(--hover); }
+  td.puesto { color: var(--ink-3); width: 44px; }
+  td.entidad { font-weight: 700; position: sticky; left: 0; z-index: 1; }
+  th.entidad { position: sticky; left: 0; z-index: 2; }
+  td.puntaje { font-size: 17px; font-weight: 800; }
+  tr.sistema td { background: var(--hover); border-bottom: 1px solid var(--ink-3); }
+  tr.sistema td.entidad, tr.sistema td.puesto { font-weight: 500; font-style: italic; color: var(--ink-2); }
+  .nd { color: var(--ink-3); font-weight: 400; }
+
+  /* Riel 1–5 en la tabla: punto = mes elegido, cola = desde el mes de comparación, línea punteada = sistema */
+  .col-riel { width: 240px; min-width: 204px; }
+  .riel { position: relative; height: 26px; margin: 0 10px; }
+  .riel::before {
+    content: ""; position: absolute; left: 0; right: 0; top: 50%;
+    height: 2px; margin-top: -1px; background: var(--rule); border-radius: 2px;
+  }
+  .riel .marca { position: absolute; top: 50%; width: 1px; height: 8px; margin-top: -4px; background: var(--ink-3); opacity: .55; }
+  .riel .sis {
+    position: absolute; top: -10px; bottom: -10px; width: 0;
+    border-left: 2px dotted var(--ink-3); margin-left: -1px;
+    transition: left .55s cubic-bezier(.2,.7,.2,1);
+  }
+  .riel .tramo {
+    position: absolute; top: 50%; height: 2px; margin-top: -1px; background: var(--ink-2);
+    transition: left .55s cubic-bezier(.2,.7,.2,1), width .55s cubic-bezier(.2,.7,.2,1), opacity .3s;
+  }
+  .riel .aro, .riel .punto {
+    position: absolute; top: 50%;
+    transition: left .55s cubic-bezier(.2,.7,.2,1), opacity .3s, background-color .3s;
+  }
+  .riel .aro { width: 2px; height: 10px; margin: -5px 0 0 -1px; background: var(--ink-2); }
+  .riel .punto {
+    width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%;
+    background: var(--c, var(--ink-2)); box-shadow: 0 0 0 2px var(--panel);
+  }
+  tbody tr:hover .riel .punto, tr.sistema .riel .punto { box-shadow: 0 0 0 2px var(--hover); }
+  .oculto { opacity: 0; }
+  .escala { position: relative; height: 16px; margin: 0 10px; }
+  .escala span { position: absolute; transform: translateX(-50%); font-variant-numeric: tabular-nums; }
+
+  /* Nota, variación y componentes */
+  .nota { display: inline-flex; align-items: center; gap: 7px; }
+  .muestra { width: 11px; height: 11px; border-radius: 3px; flex: none; background: var(--c, var(--ink-3)); }
+  .nota b { font-weight: 800; }
+  .var-n { display: inline-block; min-width: 3.4em; text-align: right; }
+  .tend { display: inline-block; min-width: 5.8em; text-align: left; color: var(--ink-2); margin-left: 8px; }
+  .signo { display: inline-block; width: 1em; text-align: center; }
+  .mejora .signo { color: rgb(var(--r1-rgb)); }
+  .deterioro .signo { color: rgb(var(--r5-rgb)); }
+  .comp { display: inline-block; min-width: 44px; padding: 2px 6px; border-radius: 6px; text-align: right; }
+  .n1 { background: rgb(var(--r1-rgb) / var(--tinte)); }
+  .n2 { background: rgb(var(--r2-rgb) / var(--tinte)); }
+  .n3 { background: rgb(var(--r3-rgb) / var(--tinte)); }
+  .n4 { background: rgb(var(--r4-rgb) / var(--tinte)); }
+  .n5 { background: rgb(var(--r5-rgb) / var(--tinte)); }
+  .c1 { --c: rgb(var(--r1-rgb)); --c-rgb: var(--r1-rgb); } .c2 { --c: rgb(var(--r2-rgb)); --c-rgb: var(--r2-rgb); }
+  .c3 { --c: rgb(var(--r3-rgb)); --c-rgb: var(--r3-rgb); } .c4 { --c: rgb(var(--r4-rgb)); --c-rgb: var(--r4-rgb); }
+  .c5 { --c: rgb(var(--r5-rgb)); --c-rgb: var(--r5-rgb); }
+
+  /* Pie */
+  .leyenda {
+    display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center;
+    margin-top: 18px; color: var(--ink-2); font-size: 13.5px;
+  }
+  .leyenda .item { display: inline-flex; align-items: center; gap: 7px; }
+  .leyenda .sep { width: 1px; height: 16px; background: var(--rule); }
+  .leyenda .l-punto { width: 12px; height: 12px; border-radius: 50%; background: var(--ink-2); }
+  .leyenda .l-aro { width: 16px; height: 10px; border-left: 2px solid var(--ink-2); background: linear-gradient(var(--ink-2), var(--ink-2)) 0 50% / 100% 2px no-repeat; }
+  .leyenda .l-sis { width: 0; height: 16px; border-left: 2px dotted var(--ink-3); }
+  .fuente {
+    display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 18px;
+    margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--rule);
+    color: var(--ink-2); font-size: 13.5px;
+  }
+  #estadoFuente { flex: 1 1 420px; max-width: 110ch; }
+  #estadoFuente span { display: block; }
+  #estadoFuente span + span { margin-top: 2px; }
+  .fuente button {
+    font: inherit; font-weight: 650; color: var(--verde);
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 999px; padding: 6px 16px; cursor: pointer;
+  }
+  .fuente button:hover { border-color: var(--verde); }
+
+  @media (max-width: 820px) {
+    .wrap { padding: 0 16px; }
+    .hero { padding: 32px 0 92px; }
+    .campo { flex: 1 1 100%; }
+    .campo select { min-width: 0; width: 100%; }
+    .tarjetas { grid-template-columns: 1fr; gap: 10px; }
+    .tarjeta .dato { font-size: 24px; }
+    .ficha { padding: 20px 18px; }
+    .ficha h2 { font-size: 26px; }
+    .ficha-datos { grid-template-columns: 1fr; }
+    .ficha-datos > div { padding: 14px 0; }
+    .ficha-datos > div + div { padding-left: 0; border-left: 0; border-top: 1px solid var(--rule); }
+    .grande { font-size: 38px; }
+    .pista { margin: 0 14px; }
+    .pista .grad i { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .riel .sis, .riel .tramo, .riel .aro, .riel .punto,
+    .pista .sis, .pista .tramo, .pista .aro, .pista .punto, .pista .etq { transition: none; }
+  }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <h1>Calificación CAMEL de bancos</h1>
+    <p class="lede" id="lede">Puntaje global de cada entidad. Menor puntaje = mejor.</p>
+
+    <div class="controles">
+      <label class="campo">Mes
+        <select id="mes"></select>
+      </label>
+      <label class="campo">Banco
+        <select id="banco"></select>
+      </label>
+      <label class="campo" id="cajaComparar" hidden>Comparar contra
+        <select id="comparar"></select>
+      </label>
+    </div>
+    <p class="aviso" id="aviso" hidden></p>
+  </div>
+</header>
+
+<main class="wrap cuerpo">
+  <!-- Todos los bancos: resumen del mes -->
+  <section class="tarjetas" id="tarjetas" aria-label="Resumen del mes">
+    <div class="tarjeta" id="tMejor"><div class="rotulo">Mejor calificado</div><div class="dato"></div><div class="pie"></div></div>
+    <div class="tarjeta" id="tPeor"><div class="rotulo">Mayor riesgo relativo</div><div class="dato"></div><div class="pie"></div></div>
+    <div class="tarjeta" id="tSistema"><div class="rotulo">Sistema</div><div class="dato"></div><div class="pie"></div></div>
+  </section>
+
+  <!-- Un banco: su posición y puntaje -->
+  <section class="ficha" id="ficha" aria-label="Banco elegido" hidden>
+    <div class="ficha-cab">
+      <h2 id="fNombre"></h2>
+      <span class="pastilla" id="fNota"></span>
+    </div>
+    <div class="ficha-datos">
+      <div><div class="rotulo">Posición</div><div class="grande" id="fPuesto"></div><div class="pie" id="fPuestoPie"></div></div>
+      <div><div class="rotulo">Puntaje global</div><div class="grande" id="fPuntaje"></div><div class="pie" id="fPuntajePie"></div></div>
+      <div><div class="rotulo">Variación</div><div class="grande" id="fVar"></div><div class="pie" id="fVarPie"></div></div>
+    </div>
+    <div class="contexto">
+      <div class="rotulo">Dónde queda entre los demás bancos</div>
+      <div class="pista">
+        <div id="fOtros"></div>
+        <span class="sis" id="fSis"></span>
+        <span class="tramo" id="fTramo"></span><span class="aro" id="fAro"></span>
+        <span class="punto" id="fPunto"></span>
+        <span class="etq" id="fEtq"></span>
+        <div class="grad" aria-hidden="true">
+          <span style="left:0%"><b>1</b><i> Sólido</i></span>
+          <span style="left:25%"><b>2</b><i> Satisfactorio</i></span>
+          <span style="left:50%"><b>3</b><i> Aceptable</i></span>
+          <span style="left:75%"><b>4</b><i> Débil</i></span>
+          <span style="left:100%"><b>5</b><i> Crítico</i></span>
+        </div>
+      </div>
+      <div class="claves">
+        <span><span class="k-banco"></span><span id="kBanco"></span></span>
+        <span id="kColaCaja"><span class="k-cola"></span><span id="kCola"></span></span>
+        <span><span class="k-otro"></span>Otros bancos</span>
+        <span><span class="k-sis"></span><span id="kSis"></span></span>
+      </div>
+    </div>
+    <div class="historia" id="fHistoria">
+      <div class="rotulo">Mes a mes</div>
+      <div class="fila-meses" id="fMeses"></div>
+    </div>
+  </section>
+
+  <div class="tabla-caja">
+    <table id="tabla">
+      <thead>
+        <tr>
+          <th class="izq" scope="col">#</th>
+          <th class="izq entidad ordenable" scope="col" data-clave="nombre"><button type="button">Entidad</button></th>
+          <th class="ordenable" scope="col" data-clave="score"><button type="button">Puntaje<br>global</button></th>
+          <th class="col-riel" scope="col" aria-label="Posición en la escala de 1 a 5">
+            <div class="escala" aria-hidden="true">
+              <span style="left:0%">1</span><span style="left:25%">2</span><span style="left:50%">3</span><span style="left:75%">4</span><span style="left:100%">5</span>
+            </div>
+          </th>
+          <th class="izq" scope="col">Nota CAMEL</th>
+          <th class="ordenable" scope="col" data-clave="variacion"><button type="button">Variación</button></th>
+          <th class="ordenable comp-col" scope="col" data-clave="c"><button type="button"><span class="letra">C</span>Capital</button></th>
+          <th class="ordenable comp-col" scope="col" data-clave="a"><button type="button"><span class="letra">A</span>Activos</button></th>
+          <th class="ordenable comp-col" scope="col" data-clave="m"><button type="button"><span class="letra">M</span>Gestión</button></th>
+          <th class="ordenable comp-col" scope="col" data-clave="e"><button type="button"><span class="letra">E</span>Rentab.</button></th>
+          <th class="ordenable comp-col" scope="col" data-clave="l"><button type="button"><span class="letra">L</span>Liquidez</button></th>
+          <th class="ordenable" scope="col" data-clave="pat"><button type="button">Patrimonio<br>efectivo, mill. Gs.</button></th>
+          <th class="ordenable" scope="col" data-clave="part"><button type="button">Participación</button></th>
+        </tr>
+      </thead>
+      <tbody id="cuerpo"></tbody>
+    </table>
+  </div>
+
+  <div class="leyenda" aria-label="Cómo leer la tabla">
+    <span class="item c1"><span class="muestra"></span>1 Sólido</span>
+    <span class="item c2"><span class="muestra"></span>2 Satisfactorio</span>
+    <span class="item c3"><span class="muestra"></span>3 Aceptable</span>
+    <span class="item c4"><span class="muestra"></span>4 Débil</span>
+    <span class="item c5"><span class="muestra"></span>5 Crítico</span>
+    <span class="sep" aria-hidden="true"></span>
+    <span class="item"><span class="l-punto"></span>Mes elegido</span>
+    <span class="item"><span class="l-aro"></span>Mes de comparación</span>
+    <span class="item"><span class="l-sis"></span>Sistema</span>
+    <span class="sep" aria-hidden="true"></span>
+    <span class="item">Variación negativa = mejora</span>
+  </div>
+
+  <footer class="fuente">
+    <div id="estadoFuente" role="status">Leyendo el Google Sheet…</div>
+    <button type="button" id="recargar">Volver a leer</button>
+  </footer>
+</main>
+
+<script>
+/* =====================================================================
+   CONFIGURACIÓN: links publicados del Google Sheet (formato CSV).
+   La página lee todos y junta los meses que encuentre. Cada link puede ser:
+   - una hoja tipo "Resumen": un solo mes, el de "Período analizado";
+   - una tabla con todos los meses: una fila por entidad y período, con
+     columnas Período, Entidad y Puntaje global (y, si están, C, A, M, E, L,
+     Nota CAMEL, Categoría, Patrimonio efectivo, Participación).
+   Para sumar otra pestaña, agregá una línea con su link (…pub?gid=NÚMERO&single=true&output=csv).
+   ===================================================================== */
+const CONFIG = {
+  FUENTES: [
+    { nombre: "Pestaña Resumen",
+      url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTglShja49GBgQX7qzsKUqE6sgwxhMMVaTyrw7i7WCfmCxtbFBzDdTwo2mqyCSKFyTRenh2tbqXKn5Z/pub?gid=611378809&single=true&output=csv" },
+    { nombre: "Documento completo",
+      url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTglShja49GBgQX7qzsKUqE6sgwxhMMVaTyrw7i7WCfmCxtbFBzDdTwo2mqyCSKFyTRenh2tbqXKn5Z/pub?output=csv" }
+  ]
+};
+
+/* Copia del Resumen guardada en la página: se usa si el Google Sheet no responde. */
+const RESPALDO_CSV = String.raw`,Sistema de calificación CAMEL — Bancos,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,Control de carga,,,,,,,
+,,Período a analizar,2026/09,← vacío = último mes cargado,,,,,,Período analizado,2026/09,,Períodos cargados,9,,,,,,
+,,Comparar contra,,← vacío = mes anterior,,,,,,Comparado contra,2026/08,,Filas del último mes (esperado 16),16,,,,,,
+,,,,,,,,,,,,,Ratios de la Base sin parámetro,0,,,,,,
+,Mejor calificado: Itaú (1.52)   ·   Mayor riesgo relativo: Basa (3.57)   ·   Sistema: 2.03,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,
+,#,Entidad,"C
+Capital","A
+Activos","M
+Gestión","E
+Rentab.","L
+Liquidez",Puntaje global,Nota CAMEL,Categoría,Variación vs. comparación,Tendencia,Patrimonio efectivo (mill. Gs.),Participación,,,Auxiliar de orden — no modificar,,,
+,—,Sistema,2.00,2.14,2.00,2.00,2.00,2.03,2,Satisfactorio,-0.07,▲ Mejora,"32,627,126",100.0%,,,Entidad,Puntaje,Orden,1
+,1,Itaú,1.40,2.21,1.00,1.00,2.00,1.52,2,Satisfactorio,-0.03,▲ Mejora,"5,871,451",18.0%,,,BNA,3.17,15,13
+,2,BNF,1.00,3.14,2.00,2.20,1.00,1.87,2,Satisfactorio,-0.06,▲ Mejora,"3,979,066",12.2%,,,Atlas,2.23,5,6
+,3,Continental,3.00,2.00,1.00,1.40,2.50,1.98,2,Satisfactorio,+0.21,▼ Deterioro,"5,977,620",18.3%,,,Bancop,2.62,8,8
+,4,GNB,1.60,2.43,2.00,2.00,2.00,2.01,2,Satisfactorio,+0.06,▼ Deterioro,"3,293,819",10.1%,,,Basa,3.57,16,11
+,5,Atlas,2.00,2.14,3.00,2.00,2.00,2.23,2,Satisfactorio,-0.09,▲ Mejora,"1,417,825",4.3%,,,BNF,1.87,2,3
+,6,Familiar,2.60,3.57,2.00,1.00,2.00,2.23,2,Satisfactorio,0.00,= Estable,"1,417,445",4.3%,,,Citibank,2.60,7,10
+,7,Citibank,1.40,1.21,5.00,3.40,2.00,2.60,3,Aceptable,+0.14,▼ Deterioro,"296,259",0.9%,,,Continental,1.98,3,7
+,8,Bancop,2.60,2.00,3.00,3.00,2.50,2.62,3,Aceptable,0.00,= Estable,"799,801",2.5%,,,Do Brasil,2.69,9,4
+,9,Do Brasil,1.00,1.86,5.00,4.60,1.00,2.69,3,Aceptable,0.00,= Estable,"155,796",0.5%,,,Familiar,2.23,6,9
+,10,Interfisa,2.20,2.00,4.00,2.80,2.50,2.70,3,Aceptable,-0.25,▲ Mejora,"617,554",1.9%,,,GNB,2.01,4,12
+,11,UENO,3.60,1.00,3.00,3.00,3.00,2.72,3,Aceptable,+0.08,▼ Deterioro,"2,557,859",7.8%,,,Interfisa,2.70,10,16
+,12,Zeta,1.80,2.71,3.00,3.60,2.50,2.72,3,Aceptable,+0.08,▼ Deterioro,"767,481",2.4%,,,Itaú,1.52,1,17
+,13,Sudameris,2.80,2.36,3.00,3.00,3.50,2.93,3,Aceptable,-0.13,▲ Mejora,"3,829,529",11.7%,,,Solar,2.97,14,15
+,14,Solar,3.80,3.93,1.00,3.60,2.50,2.97,3,Aceptable,-0.10,▲ Mejora,"357,015",1.1%,,,Sudameris,2.93,13,14
+,15,BNA,1.00,4.64,5.00,4.20,1.00,3.17,3,Aceptable,+0.07,▼ Deterioro,"87,556",0.3%,,,UENO,2.72,11,2
+,16,Basa,3.00,3.57,4.00,3.80,3.50,3.57,4,Débil,-0.14,▲ Mejora,"1,201,051",3.7%,,,Zeta,2.72,12,5
+,Menor puntaje = mejor.  Escala: 1 Sólido · 2 Satisfactorio · 3 Aceptable · 4 Débil · 5 Crítico.  Variación negativa = mejora. Pesos y cortes editables en la hoja Parámetros.,,,,,,,,,,,,,,,,,,,`;
+
+/* ---------- Lectura de CSV ---------- */
+function leerCSV(texto) {
+  const filas = []; let fila = [], celda = "", comillas = false;
+  for (let i = 0; i < texto.length; i++) {
+    const ch = texto[i];
+    if (comillas) {
+      if (ch === '"') { if (texto[i + 1] === '"') { celda += '"'; i++; } else comillas = false; }
+      else celda += ch;
+    } else if (ch === '"') comillas = true;
+    else if (ch === ",") { fila.push(celda); celda = ""; }
+    else if (ch === "\n") { fila.push(celda); filas.push(fila); fila = []; celda = ""; }
+    else if (ch !== "\r") celda += ch;
+  }
+  if (celda !== "" || fila.length) { fila.push(celda); filas.push(fila); }
+  return filas;
+}
+const plano = s => String(s == null ? "" : s).toLowerCase().normalize("NFD")
+  .replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
+
+function numero(s) {
+  s = String(s == null ? "" : s).trim().replace(/[−–]/g, "-").replace(/[%\s]/g, "");
+  if (!s || s === "-" || s === "—") return null;
+  const coma = s.lastIndexOf(","), punto = s.lastIndexOf(".");
+  if (coma >= 0 && punto >= 0) s = coma > punto ? s.replace(/\./g, "").replace(",", ".") : s.replace(/,/g, "");
+  else if (coma >= 0) s = /^[+-]?\d{1,3}(,\d{3})+$/.test(s) ? s.replace(/,/g, "") : s.replace(",", ".");
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+function entero(s) {
+  const d = String(s == null ? "" : s).replace(/[^\d]/g, "");
+  return d ? Number(d) : null;
+}
+function periodoNormal(s) {
+  s = String(s == null ? "" : s).trim();
+  let m = s.match(/(\d{4})\D+(\d{1,2})/);
+  if (m) return m[1] + "/" + m[2].padStart(2, "0");
+  m = s.match(/(\d{1,2})\D+(\d{4})/);
+  if (m) return m[2] + "/" + m[1].padStart(2, "0");
+  return "";
+}
+const r2 = v => Math.round(v * 100) / 100;
+
+/* Lee una tabla con encabezado "Entidad" + "Puntaje global" (Resumen o histórico). */
+function leerTabla(texto) {
+  const filas = leerCSV(texto);
+  let cab = -1;
+  for (let i = 0; i < filas.length && cab < 0; i++) {
+    const p = filas[i].map(plano);
+    if (p.includes("entidad") && p.some(x => x.startsWith("puntaje"))) cab = i;
+  }
+  if (cab < 0) throw new Error("No se encontró la fila de encabezados (Entidad, Puntaje global).");
+  const enc = filas[cab].map(plano);
+  const col = (...pruebas) => enc.findIndex(h => pruebas.some(p => typeof p === "string" ? h === p : p.test(h)));
+  const C = {
+    orden: col("#"), nombre: col("entidad"), periodo: col(/^periodo/),
+    c: col(/capital/, "c"), a: col(/activos/, "a"), m: col(/gestion/, "m"),
+    e: col(/rentab/, "e"), l: col(/liquidez/, "l"),
+    score: col(/^puntaje global/, "puntaje"), nota: col(/^nota/), cat: col(/^categoria/),
+    variacion: col(/^variacion/), pat: col(/^patrimonio/), part: col(/^participacion/)
+  };
+  const dato = (f, i) => (i >= 0 && i < f.length ? f[i] : "");
+
+  let periodo = "", comparado = "";
+  for (const f of filas.slice(0, cab)) {
+    f.forEach((celda, j) => {
+      const p = plano(celda);
+      if (p === "periodo analizado") periodo = periodoNormal(f[j + 1]);
+      if (p === "comparado contra") comparado = periodoNormal(f[j + 1]);
+    });
+  }
+
+  const registros = [];
+  for (let i = cab + 1; i < filas.length; i++) {
+    const f = filas[i];
+    const nombre = dato(f, C.nombre).trim();
+    if (!nombre) { if (registros.length) break; else continue; }
+    const score = numero(dato(f, C.score));
+    if (score == null) continue;
+    registros.push({
+      clave: plano(nombre), nombre,
+      sistema: plano(nombre) === "sistema",
+      periodo: C.periodo >= 0 ? periodoNormal(dato(f, C.periodo)) : "",
+      ordenHoja: numero(dato(f, C.orden)),
+      c: numero(dato(f, C.c)), a: numero(dato(f, C.a)), m: numero(dato(f, C.m)),
+      e: numero(dato(f, C.e)), l: numero(dato(f, C.l)),
+      score, nota: numero(dato(f, C.nota)), cat: dato(f, C.cat).trim(),
+      varHoja: numero(dato(f, C.variacion)),
+      pat: entero(dato(f, C.pat)), part: numero(dato(f, C.part))
+    });
+  }
+  if (!registros.some(r => !r.sistema)) throw new Error("La tabla no tiene entidades.");
+  return { periodo, comparado, registros };
+}
+
+/* ---------- Modelo: período -> entidades ---------- */
+function armarModelo(resumenes, historicos) {
+  const M = new Map();
+  const nuevo = (per, extra) => { const o = Object.assign({ parcial: false, cmpHoja: "", filas: new Map() }, extra); M.set(per, o); return o; };
+
+  resumenes.forEach(res => {
+    const actual = nuevo(res.periodo, { cmpHoja: res.comparado });
+    res.registros.forEach(r => actual.filas.set(r.clave, r));
+  });
+  historicos.forEach(h => {
+    const vistos = new Set();
+    h.registros.forEach(r => {
+      if (!r.periodo) return;
+      if (!vistos.has(r.periodo)) { vistos.add(r.periodo); nuevo(r.periodo, {}); }
+      M.get(r.periodo).filas.set(r.clave, r);
+    });
+  });
+  // Mes de comparación de una hoja Resumen: si ninguna fuente lo trae completo,
+  // solo se puede reconstruir el puntaje global (puntaje − variación).
+  resumenes.forEach(res => {
+    if (!res.comparado || res.comparado === res.periodo || M.has(res.comparado)) return;
+    const previo = nuevo(res.comparado, { parcial: true, origen: res.periodo });
+    res.registros.forEach(r => {
+      if (r.varHoja == null) return;
+      previo.filas.set(r.clave, {
+        clave: r.clave, nombre: r.nombre, sistema: r.sistema, ordenHoja: null,
+        c: null, a: null, m: null, e: null, l: null,
+        score: r2(r.score - r.varHoja), nota: null, cat: "", varHoja: null, pat: null, part: null
+      });
+    });
+  });
+  return M;
+}
+
+/* Qué trae un CSV que no se pudo usar (para avisarlo en el pie). */
+function describir(texto) {
+  if (/^\s*<(!doctype|html)/i.test(texto)) return "devolvió una página web y no un CSV; revisá que esté publicado como CSV.";
+  const fila = leerCSV(texto).map(f => f.map(c => c.replace(/\s+/g, " ").trim()).filter(Boolean)).find(f => f.length >= 2);
+  return "su primera pestaña no tiene columnas Entidad y Puntaje global, así que de ahí no se pueden sacar puntajes" +
+    (fila ? ". Empieza con: " + fila.slice(0, 6).map(c => c.slice(0, 28)).join(", ") + "." : " (está vacía).");
+}
+
+/* Puesto de cada entidad en un período (1 = mejor puntaje). */
+function puestosDe(per) {
+  const lista = [...per.filas.values()].filter(r => !r.sistema && r.score != null);
+  lista.sort((x, y) => x.score - y.score
+    || (x.ordenHoja == null ? 99 : x.ordenHoja) - (y.ordenHoja == null ? 99 : y.ordenHoja)
+    || x.nombre.localeCompare(y.nombre, "es"));
+  const m = new Map();
+  lista.forEach((r, k) => m.set(r.clave, k + 1));
+  return m;
+}
+
+/* ---------- Formatos ---------- */
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+const CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic"];
+const mesLargo = p => { const [a, m] = p.split("/"); return (MESES[+m - 1] || m) + " de " + a; };
+const mesCorto = p => { const [a, m] = p.split("/"); return (CORTOS[+m - 1] || m) + " " + a; };
+const mesLista = p => { const [a, m] = p.split("/"); const n = MESES[+m - 1] || m; return n.charAt(0).toUpperCase() + n.slice(1) + " " + a; };
+const f2 = v => (v == null ? "—" : v.toFixed(2));
+const fVar = v => (v == null ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(2));
+const fMiles = v => (v == null ? "—" : v.toLocaleString("en-US"));
+const fPct = v => (v == null ? "—" : v.toFixed(1) + "%");
+const fPuesto = n => (n == null ? "—" : n + ".º");
+const nivel = v => (v == null ? 0 : Math.min(5, Math.max(1, Math.round(v))));
+const posicion = v => Math.min(100, Math.max(0, (v - 1) / 4 * 100)) + "%";
+const escapar = s => String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+function tendencia(v) {
+  if (v == null) return null;
+  if (v < 0) return { clase: "mejora", signo: "▲", texto: "Mejora" };
+  if (v > 0) return { clase: "deterioro", signo: "▼", texto: "Deterioro" };
+  return { clase: "estable", signo: "=", texto: "Estable" };
+}
+
+/* ---------- Estado y dibujo ---------- */
+const $ = id => document.getElementById(id);
+const estado = { periodo: null, comparar: "", banco: "", clave: "score", dir: 1 };
+let MODELO = new Map();
+let periodoHoja = "";
+const filasDOM = new Map();
+const sinMovimiento = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function crearFila() {
+  const tr = document.createElement("tr");
+  const td = (clase) => { const c = document.createElement("td"); if (clase) c.className = clase; tr.appendChild(c); return c; };
+  const p = {};
+  p.puesto = td("izq puesto");
+  p.entidad = td("izq entidad");
+  p.puntaje = td("puntaje");
+  const riel = td("col-riel");
+  riel.innerHTML = '<div class="riel">' +
+    [0, 25, 50, 75, 100].map(x => '<span class="marca" style="left:' + x + '%"></span>').join("") +
+    '<span class="sis"></span><span class="tramo"></span><span class="aro"></span><span class="punto"></span></div>';
+  p.riel = riel.firstChild;
+  p.sis = riel.querySelector(".sis"); p.tramo = riel.querySelector(".tramo");
+  p.aro = riel.querySelector(".aro"); p.punto = riel.querySelector(".punto");
+  p.nota = td("izq");
+  p.variacion = td("");
+  ["c", "a", "m", "e", "l"].forEach(k => { p[k] = td(""); });
+  p.pat = td(""); p.part = td("");
+  tr._p = p;
+  return tr;
+}
+
+/* Coloca punto, cola y marca de comparación sobre un riel (tabla o ficha). */
+function ubicar(punto, aro, tramo, score, previo) {
+  punto.style.left = posicion(score);
+  if (previo != null) {
+    const x1 = Math.min(score, previo), x2 = Math.max(score, previo);
+    aro.style.left = posicion(previo);
+    tramo.style.left = posicion(x1);
+    tramo.style.width = Math.max(0, Math.min(5, x2) - Math.max(1, x1)) / 4 * 100 + "%";
+    aro.classList.remove("oculto"); tramo.classList.remove("oculto");
+  } else { aro.classList.add("oculto"); tramo.classList.add("oculto"); }
+}
+
+function pintarFila(tr, r, ctx) {
+  const p = tr._p;
+  tr.className = (r.sistema ? "sistema " : "") + (r.nota ? "c" + nivel(r.nota) : "");
+  p.puesto.textContent = r.sistema ? "—" : r.puesto;
+  p.entidad.textContent = r.nombre;
+  p.puntaje.textContent = f2(r.score);
+
+  ubicar(p.punto, p.aro, p.tramo, r.score, r.previo);
+  if (ctx.sistema != null && !r.sistema) { p.sis.style.left = posicion(ctx.sistema); p.sis.classList.remove("oculto"); }
+  else p.sis.classList.add("oculto");
+  p.riel.title = r.nombre + ": " + f2(r.score) + " en " + mesLargo(ctx.periodo) +
+    (r.previo != null ? "; " + f2(r.previo) + " en " + mesLargo(ctx.comparar) : "");
+
+  if (r.nota) p.nota.innerHTML = '<span class="nota"><span class="muestra"></span><b>' + r.nota + "</b> " + escapar(r.cat) + "</span>";
+  else p.nota.innerHTML = '<span class="nd">—</span>';
+
+  const t = tendencia(r.variacion);
+  p.variacion.innerHTML = t
+    ? '<span class="var-n">' + fVar(r.variacion) + '</span><span class="tend ' + t.clase + '"><span class="signo">' + t.signo + "</span> " + t.texto + "</span>"
+    : '<span class="nd">—</span>';
+
+  ["c", "a", "m", "e", "l"].forEach(k => {
+    p[k].innerHTML = r[k] == null ? '<span class="nd">—</span>' : '<span class="comp n' + nivel(r[k]) + '">' + f2(r[k]) + "</span>";
+  });
+  p.pat.textContent = fMiles(r.pat);
+  p.part.textContent = fPct(r.part);
+  [p.pat, p.part].forEach(c => c.classList.toggle("nd", c.textContent === "—"));
+}
+
+function llenarLista(sel, opciones, valor) {
+  sel.textContent = "";
+  opciones.forEach(([v, texto]) => { const o = document.createElement("option"); o.value = v; o.textContent = texto; sel.appendChild(o); });
+  sel.value = valor;
+}
+
+function pintarTarjeta(id, r, nombre, pie) {
+  const t = $(id);
+  t.className = "tarjeta" + (r && r.nota ? " c" + nivel(r.nota) : "");
+  t.querySelector(".dato").innerHTML = (nombre ? "<span>" + escapar(nombre) + "</span>" : "") +
+    '<span class="valor">' + f2(r ? r.score : null) + "</span>";
+  t.querySelector(".pie").textContent = pie || "";
+}
+
+function pintarFicha(b, d) {
+  const ficha = $("ficha");
+  ficha.className = "ficha" + (b && b.nota ? " c" + nivel(b.nota) : "");
+  $("fNombre").textContent = d.nombreBanco;
+  const nota = $("fNota");
+  nota.hidden = !(b && b.nota);
+  if (b && b.nota) nota.innerHTML = '<span class="muestra"></span>Nota ' + b.nota + " " + escapar(b.cat);
+
+  $("fPuesto").innerHTML = b && b.puesto != null ? b.puesto + "<small>.º de " + d.total + "</small>" : "—";
+  $("fPuestoPie").textContent = !b ? "Sin datos en " + mesLargo(d.periodo)
+    : d.puestoPrevio != null ? "En " + mesLargo(d.comparar) + ": " + fPuesto(d.puestoPrevio) : "";
+  $("fPuntaje").textContent = f2(b ? b.score : null);
+  $("fPuntajePie").textContent = d.sistema ? "Sistema: " + f2(d.sistema.score) : "";
+  const t = b ? tendencia(b.variacion) : null;
+  $("fVar").textContent = b ? fVar(b.variacion) : "—";
+  const vp = $("fVarPie");
+  vp.className = "pie" + (t ? " " + t.clase : "");
+  vp.innerHTML = t ? '<span class="signo">' + t.signo + "</span> " + t.texto + " contra " + mesLargo(d.comparar)
+    : (b ? "Sin mes de comparación" : "");
+
+  // Riel de contexto
+  $("fOtros").innerHTML = d.otros.map(o =>
+    '<span class="otro" style="left:' + posicion(o.score) + '" title="' + escapar(o.nombre) + " " + f2(o.score) + '"></span>').join("");
+  const visibles = ["fPunto", "fEtq", "fAro", "fTramo"];
+  visibles.forEach(id => { $(id).style.visibility = b ? "" : "hidden"; });
+  if (b) {
+    ubicar($("fPunto"), $("fAro"), $("fTramo"), b.score, b.previo);
+    $("fEtq").style.left = posicion(b.score);
+    $("fEtq").textContent = b.nombre + " " + f2(b.score);
+  }
+  $("fSis").hidden = !d.sistema;
+  if (d.sistema) $("fSis").style.left = posicion(d.sistema.score);
+  $("kBanco").textContent = d.nombreBanco + " en " + mesLargo(d.periodo);
+  $("kColaCaja").hidden = !(b && b.previo != null);
+  if (b && b.previo != null) $("kCola").textContent = "Dónde estaba en " + mesLargo(d.comparar) + " (" + f2(b.previo) + ")";
+  $("kSis").textContent = "Sistema" + (d.sistema ? " " + f2(d.sistema.score) : "");
+
+  // Mes a mes
+  const fila = $("fMeses");
+  fila.textContent = "";
+  d.historia.forEach(h => {
+    const bt = document.createElement("button");
+    bt.type = "button";
+    bt.setAttribute("aria-pressed", h.periodo === d.periodo ? "true" : "false");
+    bt.innerHTML = '<span class="hm">' + mesCorto(h.periodo) + '</span><span class="hv">' + f2(h.score) +
+      '</span><span class="hp">' + (h.puesto != null ? "Puesto " + fPuesto(h.puesto) : "Sin datos") + "</span>";
+    bt.addEventListener("click", () => { estado.periodo = h.periodo; estado.comparar = ""; dibujar(); });
+    fila.appendChild(bt);
+  });
+  $("fHistoria").hidden = d.historia.length < 2;
+}
+
+function dibujar() {
+  const periodos = [...MODELO.keys()].sort();
+  if (!periodos.length) return;
+  if (!periodos.includes(estado.periodo))
+    estado.periodo = periodos.includes(periodoHoja) ? periodoHoja : periodos[periodos.length - 1];
+  const i = periodos.indexOf(estado.periodo);
+  const anterior = i > 0 ? periodos[i - 1] : null;
+  const elegido = estado.comparar && estado.comparar !== estado.periodo && periodos.includes(estado.comparar);
+  const comparar = elegido ? estado.comparar : anterior;
+  const per = MODELO.get(estado.periodo);
+  const prev = comparar ? MODELO.get(comparar) : null;
+
+  // Filas del mes, con variación contra el mes de comparación
+  const puestos = puestosDe(per);
+  const filas = [...per.filas.values()].map(r => {
+    const b = prev ? prev.filas.get(r.clave) : null;
+    const variacion = b && b.score != null ? r2(r.score - b.score)
+      : (r.varHoja != null && comparar && comparar === per.cmpHoja ? r.varHoja : null);
+    return Object.assign({}, r, { variacion, previo: b ? b.score : null, puesto: puestos.get(r.clave) });
+  });
+  const sistema = filas.find(r => r.sistema) || null;
+  const entidades = filas.filter(r => !r.sistema);
+
+  const k = estado.clave;
+  entidades.sort((x, y) => {
+    const vx = x[k], vy = y[k];
+    if (vx == null && vy == null) return x.puesto - y.puesto;
+    if (vx == null) return 1;
+    if (vy == null) return -1;
+    const d = typeof vx === "string" ? vx.localeCompare(vy, "es") : vx - vy;
+    return (d * estado.dir) || (x.puesto - y.puesto);
+  });
+
+  // Listas desplegables: mes, banco y comparación
+  llenarLista($("mes"), periodos.slice().reverse().map(p =>
+    [p, mesLista(p) + (MODELO.get(p).parcial ? " (solo puntaje global)" : "")]), estado.periodo);
+
+  const bancos = new Map();
+  MODELO.forEach(m => m.filas.forEach(r => { if (!r.sistema && !bancos.has(r.clave)) bancos.set(r.clave, r.nombre); }));
+  if (estado.banco && !bancos.has(estado.banco)) estado.banco = "";
+  const listaBancos = [...bancos.entries()].sort((x, y) => x[1].localeCompare(y[1], "es"));
+  llenarLista($("banco"), [["", "Todos los bancos"]].concat(listaBancos), estado.banco);
+
+  const otrosMeses = periodos.filter(p => p !== estado.periodo && p !== anterior).reverse();
+  llenarLista($("comparar"),
+    [["", anterior ? "Mes anterior (" + mesLista(anterior) + ")" : "Sin mes anterior"]].concat(otrosMeses.map(p => [p, mesLista(p)])),
+    elegido && comparar !== anterior ? comparar : "");
+  $("cajaComparar").hidden = periodos.length < 3;
+
+  // Texto de cabecera y aviso
+  const banco = estado.banco ? entidades.find(r => r.clave === estado.banco) || null : null;
+  const nombreBanco = estado.banco ? bancos.get(estado.banco) : "";
+  $("lede").innerHTML = (estado.banco ? "Posición y puntaje global de <strong>" + escapar(nombreBanco) + "</strong> en <strong>"
+      : "Puntaje global de cada entidad en <strong>") + mesLargo(estado.periodo) + "</strong>" +
+    (comparar ? ", comparado contra " + mesLargo(comparar) : "") + ". Menor puntaje = mejor.";
+  const aviso = $("aviso");
+  aviso.hidden = !per.parcial;
+  if (per.parcial) aviso.textContent = "De " + mesLargo(estado.periodo) + " solo hay puntaje global: sale de restar la variación al puntaje de " +
+    mesLargo(per.origen) + ". La nota, los componentes y el patrimonio de este mes no están en la hoja publicada.";
+
+  // Resumen del mes o ficha del banco
+  $("tarjetas").hidden = !!estado.banco;
+  $("ficha").hidden = !estado.banco;
+  if (estado.banco) {
+    const puestosPrev = prev ? puestosDe(prev) : null;
+    pintarFicha(banco, {
+      nombreBanco, periodo: estado.periodo, comparar, sistema, total: entidades.length,
+      puestoPrevio: puestosPrev && puestosPrev.has(estado.banco) ? puestosPrev.get(estado.banco) : null,
+      otros: entidades.filter(r => r.clave !== estado.banco),
+      historia: periodos.map(p => {
+        const f = MODELO.get(p).filas.get(estado.banco);
+        return { periodo: p, score: f ? f.score : null, puesto: f ? puestosDe(MODELO.get(p)).get(estado.banco) : null };
+      })
+    });
+  } else {
+    const orden = entidades.slice().sort((x, y) => x.puesto - y.puesto);
+    const mejor = orden[0], peor = orden[orden.length - 1];
+    const pieNota = r => (r && r.nota ? "Nota " + r.nota + " " + r.cat : "");
+    pintarTarjeta("tMejor", mejor, mejor.nombre, pieNota(mejor));
+    pintarTarjeta("tPeor", peor, peor.nombre, pieNota(peor));
+    const ts = sistema ? tendencia(sistema.variacion) : null;
+    pintarTarjeta("tSistema", sistema, "", ts ? fVar(sistema.variacion) + " " + ts.signo + " " + ts.texto + " contra " + mesLargo(comparar) : pieNota(sistema));
+  }
+
+  // Encabezados ordenables
+  document.querySelectorAll("th.ordenable").forEach(th => {
+    if (th.dataset.clave === estado.clave) th.setAttribute("aria-sort", estado.dir > 0 ? "ascending" : "descending");
+    else th.removeAttribute("aria-sort");
+  });
+
+  // Filas: se reutilizan para que los puntos y las filas se desplacen al cambiar de mes
+  const cuerpo = $("cuerpo");
+  const antes = new Map();
+  filasDOM.forEach((tr, clave) => { if (tr.isConnected) antes.set(clave, tr.getBoundingClientRect().top); });
+  const ctx = { periodo: estado.periodo, comparar, sistema: sistema ? sistema.score : null };
+  const lista = estado.banco ? (banco ? [banco] : []) : (sistema ? [sistema] : []).concat(entidades);
+  const vigentes = new Set(lista.map(r => r.clave));
+  filasDOM.forEach((tr, clave) => { if (!vigentes.has(clave)) { tr.remove(); filasDOM.delete(clave); } });
+  lista.forEach(r => {
+    let tr = filasDOM.get(r.clave);
+    if (!tr) { tr = crearFila(); filasDOM.set(r.clave, tr); }
+    pintarFila(tr, r, ctx);
+    cuerpo.appendChild(tr);
+  });
+  $("tabla").parentElement.hidden = !lista.length;
+  if (!sinMovimiento && !estado.banco) {
+    filasDOM.forEach((tr, clave) => {
+      if (!antes.has(clave) || !tr.animate) return;
+      const dy = antes.get(clave) - tr.getBoundingClientRect().top;
+      if (Math.abs(dy) > 1 && Math.abs(dy) < 1500) tr.animate(
+        [{ transform: "translateY(" + dy + "px)" }, { transform: "translateY(0)" }],
+        { duration: 520, easing: "cubic-bezier(.2,.7,.2,1)" });
+    });
+  }
+}
+
+document.querySelectorAll("th.ordenable button").forEach(b => b.addEventListener("click", () => {
+  const clave = b.parentElement.dataset.clave;
+  if (estado.clave === clave) estado.dir = -estado.dir; else { estado.clave = clave; estado.dir = 1; }
+  dibujar();
+}));
+$("mes").addEventListener("change", e => { estado.periodo = e.target.value; estado.comparar = ""; dibujar(); });
+$("banco").addEventListener("change", e => { estado.banco = e.target.value; dibujar(); });
+$("comparar").addEventListener("change", e => { estado.comparar = e.target.value; dibujar(); });
+
+/* ---------- Carga de datos ---------- */
+async function bajar(url) {
+  const intento = async (u) => {
+    const corte = new AbortController();
+    const reloj = setTimeout(() => corte.abort(), 12000);
+    try {
+      const resp = await fetch(u, { signal: corte.signal, cache: "no-store" });
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      return await resp.text();
+    } finally { clearTimeout(reloj); }
+  };
+  try { return await intento(url + (url.includes("?") ? "&" : "?") + "_=" + Date.now()); }
+  catch (e) { return await intento(url); }
+}
+
+async function cargar() {
+  const est = $("estadoFuente");
+  est.textContent = "Leyendo el Google Sheet…";
+  const textos = await Promise.all(CONFIG.FUENTES.map(f => bajar(f.url).catch(e => { console.warn(f.nombre, e); return null; })));
+  const resumenes = [], historicos = [], notas = [];
+  CONFIG.FUENTES.forEach((f, k) => {
+    const texto = textos[k];
+    if (texto == null) { notas.push(f.nombre + ": no respondió."); return; }
+    let t;
+    try { t = leerTabla(texto); } catch (e) { notas.push(f.nombre + ": " + describir(texto)); return; }
+    const meses = [...new Set(t.registros.map(r => r.periodo).filter(Boolean))].sort();
+    if (meses.length) {
+      historicos.push(t);
+      notas.push(f.nombre + ": " + (meses.length === 1 ? "1 mes (" + mesLargo(meses[0])
+        : meses.length + " meses (" + mesLargo(meses[0]) + " a " + mesLargo(meses[meses.length - 1])) + ").");
+    } else if (t.periodo) {
+      const repetido = resumenes.some(r => r.periodo === t.periodo);
+      if (!repetido) resumenes.push(t);
+      notas.push(f.nombre + ": " + (repetido
+        ? "trae la misma hoja Resumen de " + mesLargo(t.periodo) + ", no agrega meses."
+        : "hoja Resumen de " + mesLargo(t.periodo) + "."));
+    } else notas.push(f.nombre + ": tiene la tabla de puntajes pero no dice de qué mes es, no se usó.");
+  });
+  const enVivo = resumenes.length + historicos.length > 0;
+  if (!enVivo) resumenes.push(leerTabla(RESPALDO_CSV));
+  MODELO = armarModelo(resumenes, historicos);
+  const hoja = resumenes.length ? resumenes[0].periodo : [...MODELO.keys()].sort().pop();
+  const cambioHoja = periodoHoja && hoja !== periodoHoja;
+  periodoHoja = hoja;
+  if (cambioHoja || !estado.periodo) { estado.periodo = periodoHoja; estado.comparar = ""; }
+  dibujar();
+  const hora = new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
+  const lineas = [enVivo ? "Datos leídos del Google Sheet a las " + hora + "."
+    : "No se pudo leer el Google Sheet. Se muestra la copia de " + mesLargo(periodoHoja) + " guardada en esta página."].concat(notas);
+  est.innerHTML = lineas.map(l => "<span>" + escapar(l) + "</span>").join("");
+}
+
+// Primero la copia guardada (la página nunca queda vacía), después los datos en vivo.
+try {
+  const r = leerTabla(RESPALDO_CSV);
+  periodoHoja = r.periodo; MODELO = armarModelo([r], []); estado.periodo = r.periodo; dibujar();
+} catch (e) { console.error(e); }
+$("recargar").addEventListener("click", cargar);
+cargar();
+</script>
+</body>
+</html>
